@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { users } from "../data/users.js";
 
 const router: IRouter = Router();
 
-interface BulkOrder {
+export interface BulkOrder {
   id: string;
+  userId: string | null;
   name: string;
   email: string;
   phone: string;
@@ -12,11 +14,16 @@ interface BulkOrder {
   pickupDate: string;
   notes: string;
   createdAt: string;
-  status: "pending" | "confirmed";
+  status: "pending" | "confirmed" | "ready" | "completed" | "cancelled";
+  discountApplied: boolean;
+  discountPercent: number;
+  subtotal: number;
+  total: number;
 }
 
-interface CateringRequest {
+export interface CateringRequest {
   id: string;
+  userId: string | null;
   name: string;
   email: string;
   phone: string;
@@ -26,29 +33,46 @@ interface CateringRequest {
   requirements: string;
   budget: string;
   createdAt: string;
-  status: "pending" | "confirmed";
+  status: "pending" | "confirmed" | "completed" | "cancelled";
 }
 
-// In-memory stores
-const bulkOrders: BulkOrder[] = [];
-const cateringRequests: CateringRequest[] = [];
+export const bulkOrders: BulkOrder[] = [];
+export const cateringRequests: CateringRequest[] = [];
 
-// --- Bulk Orders ---
+// Seed demo data
+const demoDate = new Date();
+demoDate.setDate(demoDate.getDate() + 3);
+bulkOrders.push({
+  id: "BO-DEMO-001",
+  userId: null,
+  name: "Demo Customer",
+  email: "demo@example.com",
+  phone: "+1 (555) 000-0001",
+  items: [{ itemId: "1", name: "Sourdough Loaf", quantity: 4 }, { itemId: "2", name: "Cinnamon Roll", quantity: 6 }],
+  pickupDate: demoDate.toISOString().split("T")[0],
+  notes: "Please slice the bread",
+  createdAt: new Date(Date.now() - 86400000).toISOString(),
+  status: "confirmed",
+  discountApplied: false,
+  discountPercent: 0,
+  subtotal: 61,
+  total: 61,
+});
+
+// In-memory order-count per user (for first-time discount)
+function getUserOrderCount(userId: string | null): number {
+  if (!userId) return 999; // guests don't get discount
+  return bulkOrders.filter((o) => o.userId === userId).length;
+}
+
 const BulkOrderSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(1),
-  items: z
-    .array(
-      z.object({
-        itemId: z.string(),
-        name: z.string(),
-        quantity: z.number().int().min(1),
-      }),
-    )
-    .min(1),
+  items: z.array(z.object({ itemId: z.string(), name: z.string(), quantity: z.number().int().min(1), price: z.number().optional() })).min(1),
   pickupDate: z.string().min(1),
   notes: z.string().optional().default(""),
+  subtotal: z.number().min(0).optional(),
 });
 
 router.post("/orders/bulk", (req, res) => {
@@ -58,27 +82,56 @@ router.post("/orders/bulk", (req, res) => {
     return;
   }
 
+  const userId = req.session?.userId ?? null;
+  const isFirstOrder = userId ? getUserOrderCount(userId) === 0 : false;
+  const subtotal = parsed.data.subtotal ?? 0;
+  const discountPercent = isFirstOrder ? 50 : 0;
+  const total = isFirstOrder ? subtotal * 0.5 : subtotal;
+
   const order: BulkOrder = {
     id: `BO-${Date.now()}`,
+    userId,
     ...parsed.data,
+    items: parsed.data.items.map(({ price: _p, ...item }) => item),
+    subtotal,
+    discountPercent,
+    discountApplied: isFirstOrder,
+    total,
     createdAt: new Date().toISOString(),
     status: "pending",
   };
   bulkOrders.push(order);
 
-  res.status(201).json({
-    success: true,
-    orderId: order.id,
-    message:
-      "Your bulk order has been received! We'll contact you within 24 hours to confirm.",
-  });
+  const msg = isFirstOrder
+    ? `🎉 First-time order! Your 50% welcome discount has been applied. Total: $${total.toFixed(2)} (was $${subtotal.toFixed(2)}). We'll contact you within 24 hours to confirm!`
+    : "Your bulk order has been received! We'll contact you within 24 hours to confirm.";
+
+  res.status(201).json({ success: true, orderId: order.id, discountApplied: isFirstOrder, discountPercent, total, message: msg });
 });
 
 router.get("/orders/bulk", (_req, res) => {
   res.json({ orders: bulkOrders });
 });
 
-// --- Catering Requests ---
+// GET /api/orders/my — orders for the logged-in user
+router.get("/orders/my", (req, res) => {
+  const userId = req.session?.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const user = users.get(userId);
+  if (!user) {
+    res.status(401).json({ error: "Not found" });
+    return;
+  }
+
+  const myBulk = bulkOrders.filter((o) => o.userId === userId);
+  const myCatering = cateringRequests.filter((o) => o.userId === userId);
+
+  res.json({ bulkOrders: myBulk, cateringRequests: myCatering });
+});
+
 const CateringSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
@@ -97,8 +150,10 @@ router.post("/orders/catering", (req, res) => {
     return;
   }
 
+  const userId = req.session?.userId ?? null;
   const request: CateringRequest = {
     id: `CAT-${Date.now()}`,
+    userId,
     ...parsed.data,
     createdAt: new Date().toISOString(),
     status: "pending",
@@ -108,8 +163,7 @@ router.post("/orders/catering", (req, res) => {
   res.status(201).json({
     success: true,
     requestId: request.id,
-    message:
-      "Your catering request has been received! Our events team will reach out within 48 hours.",
+    message: "Your catering request has been received! Our events team will reach out within 48 hours.",
   });
 });
 

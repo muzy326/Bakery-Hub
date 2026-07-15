@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Kanz Bakery API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: menu
+    description: Menu item operations
+  - name: orders
+    description: Order operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,110 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /menu:
+    get:
+      operationId: listMenuItems
+      tags: [menu]
+      summary: List all menu items
+      responses:
+        "200":
+          description: List of menu items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuListResponse"
+
+  /menu/{id}:
+    get:
+      operationId: getMenuItem
+      tags: [menu]
+      summary: Get a single menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Menu item detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItemDetail"
+        "404":
+          description: Not found
+
+  /menu/{id}/rate:
+    post:
+      operationId: rateMenuItem
+      tags: [menu]
+      summary: Rate a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingInput"
+      responses:
+        "200":
+          description: Updated rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingResult"
+        "404":
+          description: Not found
+
+  /orders/bulk:
+    post:
+      operationId: createBulkOrder
+      tags: [orders]
+      summary: Submit a bulk order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkOrderInput"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResult"
+        "400":
+          description: Invalid request
+
+  /orders/catering:
+    post:
+      operationId: createCateringRequest
+      tags: [orders]
+      summary: Submit a catering request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CateringInput"
+      responses:
+        "201":
+          description: Catering request received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResult"
+        "400":
+          description: Invalid request
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +142,126 @@ components:
       required:
         - status
 
+    MenuItem:
+      type: object
+      required: [id, name, category, description, price, image, tags, available, averageRating, ratingCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        image:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        available:
+          type: boolean
+        averageRating:
+          type: ["number", "null"]
+        ratingCount:
+          type: integer
+
+    MenuItemDetail:
+      allOf:
+        - $ref: "#/components/schemas/MenuItem"
+
+    MenuListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+
+    RatingInput:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    RatingResult:
+      type: object
+      required: [success, averageRating, ratingCount]
+      properties:
+        success:
+          type: boolean
+        averageRating:
+          type: number
+        ratingCount:
+          type: integer
+
+    BulkOrderItem:
+      type: object
+      required: [itemId, name, quantity]
+      properties:
+        itemId:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+
+    BulkOrderInput:
+      type: object
+      required: [name, email, phone, items, pickupDate]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BulkOrderItem"
+        pickupDate:
+          type: string
+        notes:
+          type: string
+
+    CateringInput:
+      type: object
+      required: [name, email, phone, eventType, eventDate, guestCount, requirements, budget]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        eventType:
+          type: string
+        eventDate:
+          type: string
+        guestCount:
+          type: integer
+        requirements:
+          type: string
+        budget:
+          type: string
+
+    OrderResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        orderId:
+          type: string
+        requestId:
+          type: string
+        message:
+          type: string

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Kanz Bakery"
+version = "1.0.0"
+id = "artifacts/kanz-bakery"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21208
+
+[services.development]
+run = "pnpm --filter @workspace/kanz-bakery run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kanz-bakery", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/kanz-bakery/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21208"
+BASE_PATH = "/"

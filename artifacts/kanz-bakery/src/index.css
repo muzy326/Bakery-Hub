@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Kanz Bakery — warm amber & cream palette */
+:root {
+  /* Cream background */
+  --background: 35 100% 97%;
+  /* Deep brown foreground */
+  --foreground: 15 40% 13%;
+  /* Card white */
+  --card: 0 0% 100%;
+  --card-foreground: 15 40% 13%;
+  /* Soft cream border */
+  --border: 38 67% 87%;
+  --input: 38 55% 80%;
+  --ring: 43 78% 46%;
+  /* Golden amber primary */
+  --primary: 43 78% 46%;
+  --primary-foreground: 15 40% 13%;
+  /* Light cream secondary */
+  --secondary: 38 67% 92%;
+  --secondary-foreground: 15 40% 13%;
+  /* Muted warm tones */
+  --muted: 38 67% 92%;
+  --muted-foreground: 25 30% 45%;
+  /* Accent = golden */
+  --accent: 43 78% 46%;
+  --accent-foreground: 15 40% 13%;
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: 'Playfair Display', Georgia, serif;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--app-font-sans);
+  }
+}
+
+/* Fonts loaded via <link> in index.html */
