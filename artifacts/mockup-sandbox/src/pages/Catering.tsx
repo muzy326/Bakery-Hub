@@ -82,12 +82,21 @@ export default function Catering() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.budget) {
+      setError("Please select a budget range.");
+      return;
+    }
+    const guestCount = parseInt(form.guestCount, 10);
+    if (isNaN(guestCount) || guestCount < 1) {
+      setError("Please enter a valid guest count.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       const res = await submitCateringRequest({
         ...form,
-        guestCount: parseInt(form.guestCount, 10),
+        guestCount,
       });
       setSuccess(res.message);
     } catch {
@@ -293,9 +302,6 @@ export default function Catering() {
                     </button>
                   ))}
                 </div>
-                {!form.budget && (
-                  <input type="hidden" required value={form.budget} />
-                )}
               </div>
 
               <div>

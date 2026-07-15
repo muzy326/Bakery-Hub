@@ -23,17 +23,19 @@ export default function MenuCard({ item, onAddToCart, inCart }: MenuCardProps) {
   const [ratingCount, setRatingCount] = useState(item.ratingCount);
   const [rated, setRated] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState(false);
 
   const handleRate = async (rating: number) => {
     if (rated || ratingLoading) return;
     setRatingLoading(true);
+    setRatingError(false);
     try {
       const res = await rateItem(item.id, rating);
       setAvgRating(res.averageRating);
       setRatingCount(res.ratingCount);
       setRated(true);
     } catch {
-      // silently fail
+      setRatingError(true);
     } finally {
       setRatingLoading(false);
     }
@@ -91,16 +93,20 @@ export default function MenuCard({ item, onAddToCart, inCart }: MenuCardProps) {
         <div className="mb-4">
           {rated ? (
             <p className="text-xs text-green-600 font-medium">✓ Thanks for your rating!</p>
+          ) : ratingError ? (
+            <p className="text-xs text-red-500">Couldn't save rating — try again later.</p>
           ) : (
             <div className="flex items-center gap-2">
               <StarRating
                 value={avgRating}
                 count={ratingCount}
-                interactive={!rated}
+                interactive={!ratingLoading}
                 onRate={handleRate}
                 size={15}
               />
-              {!rated && <span className="text-xs text-[#2C1810]/40">Rate this</span>}
+              <span className="text-xs text-[#2C1810]/40">
+                {ratingLoading ? "Saving…" : "Rate this"}
+              </span>
             </div>
           )}
         </div>

@@ -33,8 +33,11 @@ export default function MenuPage({ cart, onAddToCart }: MenuPageProps) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
   const [showFilters, setShowFilters] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     fetchMenu()
       .then((data) => {
         setItems(data.items);
@@ -44,7 +47,7 @@ export default function MenuPage({ cart, onAddToCart }: MenuPageProps) {
         setError("Unable to load menu. Please try again.");
         setLoading(false);
       });
-  }, []);
+  }, [retryCount]);
 
   const cartIds = new Set(cart.map((c) => c.id));
 
@@ -137,7 +140,7 @@ export default function MenuPage({ cart, onAddToCart }: MenuPageProps) {
         {/* Category Pills */}
         <div
           className={`gap-2 flex-wrap mb-8 ${
-            showFilters || window.innerWidth >= 640 ? "flex" : "hidden sm:flex"
+            showFilters ? "flex" : "hidden sm:flex"
           }`}
         >
           {categories.map((cat) => (
@@ -185,13 +188,7 @@ export default function MenuPage({ cart, onAddToCart }: MenuPageProps) {
           <div className="text-center py-20">
             <p className="text-red-500 mb-4">{error}</p>
             <button
-              onClick={() => {
-                setError(null);
-                setLoading(true);
-                fetchMenu()
-                  .then((d) => { setItems(d.items); setLoading(false); })
-                  .catch(() => { setError("Still unable to load menu."); setLoading(false); });
-              }}
+              onClick={() => setRetryCount((c) => c + 1)}
               className="bg-[#2C1810] text-white px-6 py-2.5 rounded-xl text-sm font-medium"
             >
               Try Again
