@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MessageSquare, X, Send, Minimize2, Circle } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { Link } from "wouter";
 
 interface ChatMessage {

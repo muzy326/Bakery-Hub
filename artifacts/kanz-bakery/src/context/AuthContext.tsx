@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
 export interface AuthUser {
   id: string;
@@ -8,7 +8,7 @@ export interface AuthUser {
   createdAt: string;
 }
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -17,7 +17,7 @@ interface AuthContextValue {
   refresh: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     // Only hit the server if we previously recorded a session.
     // This avoids a noisy 401 in the browser console for anonymous visitors.
-    const hasSession = sessionStorage.getItem("kanz_session") === "1";
+    const hasSession = localStorage.getItem("kanz_session") === "1";
     if (!hasSession) {
       setLoading(false);
       return;
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
       } else {
         // Session expired or invalid — clear the hint
-        sessionStorage.removeItem("kanz_session");
+        localStorage.removeItem("kanz_session");
         setUser(null);
       }
     } catch {
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json() as { user?: AuthUser; error?: string };
     if (!res.ok) throw new Error(data.error ?? "Login failed");
-    sessionStorage.setItem("kanz_session", "1");
+    localStorage.setItem("kanz_session", "1");
     setUser(data.user!);
   };
 
@@ -72,13 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json() as { user?: AuthUser; error?: string };
     if (!res.ok) throw new Error(data.error ?? "Registration failed");
-    sessionStorage.setItem("kanz_session", "1");
+    localStorage.setItem("kanz_session", "1");
     setUser(data.user!);
   };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    sessionStorage.removeItem("kanz_session");
+    localStorage.removeItem("kanz_session");
     setUser(null);
   };
 
@@ -87,10 +87,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
 }

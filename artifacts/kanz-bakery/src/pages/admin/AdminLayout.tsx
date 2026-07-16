@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, ShoppingBag, Tag, Package, MessageSquare, LogOut, Menu, X, Croissant, ChevronRight } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 const navItems = [
   { path: "/admin/orders",     label: "Orders",          icon: ShoppingBag },

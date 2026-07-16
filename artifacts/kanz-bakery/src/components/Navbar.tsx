@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ShoppingCart, Menu, X, Croissant, User, LogOut, Package, ShieldCheck, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 interface NavbarProps {
   cartCount: number;

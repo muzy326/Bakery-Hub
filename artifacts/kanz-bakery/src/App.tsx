@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Cart from './components/Cart';
