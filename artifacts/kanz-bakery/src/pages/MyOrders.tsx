@@ -35,7 +35,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function MyOrders() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<"bulk" | "catering">("bulk");
   const [bulkOrders, setBulkOrders] = useState<BulkOrder[]>([]);
   const [catering, setCatering] = useState<CateringReq[]>([]);
@@ -58,7 +58,14 @@ export default function MyOrders() {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  // Only fetch once we know the user is authenticated.
+  // Without this guard, the effect fires before auth resolves and
+  // generates a 401 on /api/orders/my for every page load.
+  useEffect(() => {
+    if (authLoading) return;   // wait for auth to resolve
+    if (!user) { setLoading(false); return; } // not logged in — skip the fetch
+    fetchOrders();
+  }, [user, authLoading]);
 
   if (!user) {
     return (
