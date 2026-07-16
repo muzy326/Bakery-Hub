@@ -28,10 +28,13 @@ export default function ManageCategories() {
 
   const fetchCats = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/categories", { credentials: "include" });
-    const data = await res.json() as { categories: Category[] };
-    setCategories(data.categories);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/categories", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { categories: Category[] };
+      setCategories(data.categories ?? []);
+    } catch { /* network error — leave state as empty array */ }
+    finally { setLoading(false); }
   };
   useEffect(() => { fetchCats(); }, []);
 

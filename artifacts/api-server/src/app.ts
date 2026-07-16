@@ -7,6 +7,10 @@ import { logger } from "./lib/logger.js";
 
 const app: Express = express();
 
+// Trust Replit's reverse proxy so session cookies with `secure: true`
+// are set and forwarded correctly in production.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

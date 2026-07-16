@@ -40,11 +40,14 @@ export default function AdminOrders() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/orders", { credentials: "include" });
-    const data = await res.json() as { bulkOrders: BulkOrder[]; cateringRequests: CateringReq[] };
-    setBulkOrders(data.bulkOrders);
-    setCatering(data.cateringRequests);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/orders", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { bulkOrders: BulkOrder[]; cateringRequests: CateringReq[] };
+      setBulkOrders(data.bulkOrders ?? []);
+      setCatering(data.cateringRequests ?? []);
+    } catch { /* network error — leave state as empty arrays */ }
+    finally { setLoading(false); }
   };
   useEffect(() => { fetchOrders(); }, []);
 

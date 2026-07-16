@@ -25,15 +25,18 @@ export default function ManageProducts() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [pRes, cRes] = await Promise.all([
-      fetch("/api/admin/products", { credentials: "include" }),
-      fetch("/api/admin/categories", { credentials: "include" }),
-    ]);
-    const { products: p } = await pRes.json() as { products: Product[] };
-    const { categories: c } = await cRes.json() as { categories: Category[] };
-    setProducts(p);
-    setCategories(c);
-    setLoading(false);
+    try {
+      const [pRes, cRes] = await Promise.all([
+        fetch("/api/admin/products", { credentials: "include" }),
+        fetch("/api/admin/categories", { credentials: "include" }),
+      ]);
+      if (!pRes.ok || !cRes.ok) return;
+      const { products: p } = await pRes.json() as { products: Product[] };
+      const { categories: c } = await cRes.json() as { categories: Category[] };
+      setProducts(p ?? []);
+      setCategories(c ?? []);
+    } catch { /* network error — leave state as empty arrays */ }
+    finally { setLoading(false); }
   };
   useEffect(() => { fetchAll(); }, []);
 
