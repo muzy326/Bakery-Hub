@@ -24,12 +24,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    // Only hit the server if we previously recorded a session.
+    // This avoids a noisy 401 in the browser console for anonymous visitors.
+    const hasSession = sessionStorage.getItem("kanz_session") === "1";
+    if (!hasSession) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json() as { user: AuthUser };
         setUser(data.user);
       } else {
+        // Session expired or invalid — clear the hint
+        sessionStorage.removeItem("kanz_session");
         setUser(null);
       }
     } catch {
@@ -50,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json() as { user?: AuthUser; error?: string };
     if (!res.ok) throw new Error(data.error ?? "Login failed");
+    sessionStorage.setItem("kanz_session", "1");
     setUser(data.user!);
   };
 
@@ -62,11 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json() as { user?: AuthUser; error?: string };
     if (!res.ok) throw new Error(data.error ?? "Registration failed");
+    sessionStorage.setItem("kanz_session", "1");
     setUser(data.user!);
   };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    sessionStorage.removeItem("kanz_session");
     setUser(null);
   };
 
