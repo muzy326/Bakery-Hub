@@ -66,14 +66,14 @@ export default function Register() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-[#2C1810] mb-1.5">Full Name</label>
-                <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                <input type="text" required autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Jane Smith"
                   className="w-full px-4 py-3 rounded-xl border border-[#D4A017]/20 focus:outline-none focus:ring-2 focus:ring-[#D4A017]/40 text-[#2C1810] text-sm placeholder:text-[#2C1810]/30" />
               </div>
 
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-[#2C1810] mb-1.5">Email Address</label>
-                <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
+                <input type="email" required autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="you@example.com"
                   className="w-full px-4 py-3 rounded-xl border border-[#D4A017]/20 focus:outline-none focus:ring-2 focus:ring-[#D4A017]/40 text-[#2C1810] text-sm placeholder:text-[#2C1810]/30" />
               </div>
@@ -81,7 +81,7 @@ export default function Register() {
               <div>
                 <label className="block text-sm font-medium text-[#2C1810] mb-1.5">Password</label>
                 <div className="relative">
-                  <input type={showPw ? "text" : "password"} required value={form.password}
+                  <input type={showPw ? "text" : "password"} required autoComplete="new-password" value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     placeholder="Min. 6 characters"
                     className="w-full px-4 py-3 pr-11 rounded-xl border border-[#D4A017]/20 focus:outline-none focus:ring-2 focus:ring-[#D4A017]/40 text-[#2C1810] text-sm placeholder:text-[#2C1810]/30" />
@@ -93,7 +93,7 @@ export default function Register() {
 
               <div>
                 <label className="block text-sm font-medium text-[#2C1810] mb-1.5">Confirm Password</label>
-                <input type="password" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                <input type="password" required autoComplete="new-password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })}
                   placeholder="Repeat password"
                   className="w-full px-4 py-3 rounded-xl border border-[#D4A017]/20 focus:outline-none focus:ring-2 focus:ring-[#D4A017]/40 text-[#2C1810] text-sm placeholder:text-[#2C1810]/30" />
               </div>

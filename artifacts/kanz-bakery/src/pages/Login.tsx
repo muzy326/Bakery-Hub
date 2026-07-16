@@ -50,6 +50,7 @@ export default function Login() {
               <label className="block text-sm font-medium text-[#2C1810] mb-1.5">Email Address</label>
               <input
                 type="email" required
+                autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="you@example.com"
@@ -62,6 +63,7 @@ export default function Login() {
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"} required
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   placeholder="••••••••"
