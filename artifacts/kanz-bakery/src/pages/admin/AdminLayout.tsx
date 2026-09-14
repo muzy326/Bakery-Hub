@@ -4,6 +4,7 @@ import { LayoutDashboard, ShoppingBag, Tag, Package, MessageSquare, LogOut, Menu
 import { useAuth } from "../../context/useAuth";
 
 const navItems = [
+  { path: "/admin/dashboard", label: "Dashboard",       icon: LayoutDashboard },
   { path: "/admin/orders",     label: "Orders",          icon: ShoppingBag },
   { path: "/admin/products",   label: "Products",        icon: Package },
   { path: "/admin/categories", label: "Categories",      icon: Tag },

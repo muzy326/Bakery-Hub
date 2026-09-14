@@ -20,6 +20,93 @@ router.get("/admin/orders", requireAdmin, (_req, res) => {
   res.json({ bulkOrders: bulkOrders.slice().reverse(), cateringRequests: cateringRequests.slice().reverse() });
 });
 
+// --- Dashboard analytics ---
+router.get("/admin/dashboard", requireAdmin, (_req, res) => {
+  const revenueStatuses = new Set(["confirmed", "ready", "completed"]);
+  const categoryLookup = new Map(categories.map((category) => [category.id, category]));
+  const productStats = new Map<string, { id: string; name: string; category: string; units: number; revenue: number }>();
+
+  let totalRevenue = 0;
+  let totalUnits = 0;
+  let totalOrders = 0;
+
+  for (const order of bulkOrders) {
+    if (!revenueStatuses.has(order.status)) continue;
+
+    const lines = order.items.map((line) => {
+      const product = menuItems.find((item) => item.id === line.itemId);
+      return product ? { line, product, grossRevenue: product.price * line.quantity } : null;
+    }).filter((line): line is { line: BulkOrder["items"][number]; product: MenuItem; grossRevenue: number } => Boolean(line));
+    const grossSubtotal = lines.reduce((sum, line) => sum + line.grossRevenue, 0);
+    const netMultiplier = grossSubtotal > 0 ? order.total / grossSubtotal : 0;
+
+    totalOrders += 1;
+    totalRevenue += order.total;
+
+    for (const { line, product, grossRevenue } of lines) {
+      const revenue = grossRevenue * netMultiplier;
+      const existing = productStats.get(product.id) ?? {
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        units: 0,
+        revenue: 0,
+      };
+      existing.units += line.quantity;
+      existing.revenue += revenue;
+      productStats.set(product.id, existing);
+      totalUnits += line.quantity;
+    }
+  }
+
+  const colorPalette = ["#B77E4D", "#D4A017", "#8C5B43", "#6F8C70", "#C9785C", "#7D6B91", "#4F7C8A", "#A68A64"];
+  const products = [...productStats.values()]
+    .sort((a, b) => b.revenue - a.revenue || b.units - a.units)
+    .map((product, index) => ({
+      ...product,
+      revenue: Number(product.revenue.toFixed(2)),
+      color: colorPalette[index % colorPalette.length],
+    }));
+
+  const categoryStats = new Map<string, { id: string; label: string; units: number; revenue: number; color: string }>();
+  for (const product of products) {
+    const category = categoryLookup.get(product.category);
+    const existing = categoryStats.get(product.category) ?? {
+      id: product.category,
+      label: category?.label ?? product.category,
+      units: 0,
+      revenue: 0,
+      color: colorPalette[categoryStats.size % colorPalette.length],
+    };
+    existing.units += product.units;
+    existing.revenue += product.revenue;
+    categoryStats.set(product.category, existing);
+  }
+
+  const categoriesByUnits = [...categoryStats.values()]
+    .sort((a, b) => b.units - a.units)
+    .map((category) => ({ ...category, revenue: Number(category.revenue.toFixed(2)) }));
+  const categoriesByRevenue = [...categoriesByUnits]
+    .sort((a, b) => b.revenue - a.revenue);
+
+  res.json({
+    summary: {
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      totalUnits,
+      totalOrders,
+      activeProducts: menuItems.filter((item) => item.available).length,
+      categoryCount: categoryStats.size,
+    },
+    productDistribution: products
+      .slice()
+      .sort((a, b) => b.units - a.units || b.revenue - a.revenue)
+      .map(({ id, name, category, units, color }) => ({ id, name, category, value: units, color })),
+    categorySplit: categoriesByUnits.map(({ id, label, units, color }) => ({ id, label, value: units, color })),
+    categoryRevenue: categoriesByRevenue.map(({ id, label, revenue, color }) => ({ id, label, value: revenue, color })),
+    productRevenue: products.map(({ id, name, category, revenue, color }) => ({ id, name, category, value: revenue, color })),
+  });
+});
+
 router.patch("/admin/orders/bulk/:id/status", requireAdmin, (req, res) => {
   const { status } = req.body;
   const order = bulkOrders.find((o) => o.id === req.params.id);
