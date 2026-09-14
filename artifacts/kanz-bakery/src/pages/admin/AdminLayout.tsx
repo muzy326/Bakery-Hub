@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Croissant size={17} className="text-[#2C1810]" />
           </div>
           <div>
-            <div className="text-white font-bold text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>Kanz Bakery</div>
+             <div className="text-white font-bold text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>Ovenly bekery</div>
             <div className="text-[#D4A017]/70 text-[10px] tracking-wide uppercase">Admin Panel</div>
           </div>
         </Link>

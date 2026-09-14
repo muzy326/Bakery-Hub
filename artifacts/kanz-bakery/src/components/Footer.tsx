@@ -14,7 +14,7 @@ export default function Footer() {
               </div>
               <div>
                 <div className="font-bold text-xl leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  Kanz Bakery
+                  Ovenly bekery
                 </div>
                 <div className="text-[#D4A017] text-[10px] tracking-widest uppercase leading-none">
                   Est. 2010
@@ -89,7 +89,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-12 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-[#F5E6C8]/40 text-xs">
-          <span>© 2024 Kanz Bakery. All rights reserved.</span>
+          <span>© 2024 Ovenly bekery. All rights reserved.</span>
           <span>Made with ♥ and a lot of flour</span>
         </div>
       </div>

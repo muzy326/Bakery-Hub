@@ -36,7 +36,7 @@ export default function Login() {
           <h1 className="text-3xl font-bold text-[#2C1810]" style={{ fontFamily: "'Playfair Display', serif" }}>
             Welcome Back
           </h1>
-          <p className="text-[#2C1810]/55 mt-2 text-sm">Sign in to your Kanz Bakery account</p>
+          <p className="text-[#2C1810]/55 mt-2 text-sm">Sign in to your Ovenly bekery account</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm p-8 border border-[#F5E6C8]">

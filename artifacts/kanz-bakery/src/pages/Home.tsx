@@ -9,7 +9,7 @@ const values = [
 ];
 
 const teamMembers = [
-  { name: "Leila Kanz", role: "Founder & Head Baker", bio: "With 20 years of pastry experience across Paris and New York, Leila built Kanz on the belief that exceptional bread changes your day.", image: "https://images.unsplash.com/photo-1607631568010-a87245c0daf8?w=400&q=80" },
+  { name: "Leila Kanz", role: "Founder & Head Baker", bio: "With 20 years of pastry experience across Paris and New York, Leila built Ovenly on the belief that exceptional bread changes your day.", image: "https://images.unsplash.com/photo-1607631568010-a87245c0daf8?w=400&q=80" },
   { name: "Omar Rashid", role: "Pastry Chef", bio: "Trained at Le Cordon Bleu Paris, Omar brings classical French technique with a creative Middle-Eastern twist.", image: "https://images.unsplash.com/photo-1583394293214-5b2c281ed8dd?w=400&q=80" },
   { name: "Sofia Chen", role: "Cake Designer", bio: "An artist at heart, Sofia transforms cakes into edible sculptures. Her celebration cakes are booked months in advance.", image: "https://images.unsplash.com/photo-1614644147798-f8c0fc9da7f6?w=400&q=80" },
 ];
@@ -30,7 +30,7 @@ export default function Home() {
             Where Every Bite<br /><span className="text-[#D4A017]">Tells a Story</span>
           </h1>
           <p className="text-lg sm:text-xl text-white/75 max-w-xl mx-auto mb-10 leading-relaxed">
-            Handcrafted breads, pastries, and celebration cakes made fresh daily. Kanz Bakery is your neighborhood sanctuary of taste.
+            Handcrafted breads, pastries, and celebration cakes made fresh daily. Ovenly bekery is your neighborhood sanctuary of taste.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/menu" className="inline-flex items-center justify-center gap-2 bg-[#D4A017] hover:bg-[#E8B82A] text-[#2C1810] font-bold px-8 py-4 rounded-2xl text-base transition-all duration-200 shadow-lg shadow-[#D4A017]/30 hover:shadow-[#D4A017]/50 hover:-translate-y-0.5">
@@ -69,7 +69,7 @@ export default function Home() {
               A Labor of Love, Baked into Every Crumb
             </h2>
             <p className="text-[#2C1810]/65 leading-relaxed mb-5 text-base sm:text-lg">
-              Kanz Bakery was born in 2010 when Leila Kanz returned from Paris with a suitcase full of recipes and a dream. Starting with a single sourdough recipe and a rented oven, she built something the neighborhood couldn't live without.
+              Ovenly bekery was born in 2010 when Leila Kanz returned from Paris with a suitcase full of recipes and a dream. Starting with a single sourdough recipe and a rented oven, she built something the neighborhood couldn't live without.
             </p>
             <p className="text-[#2C1810]/65 leading-relaxed mb-8 text-base sm:text-lg">
               Today, our team of passionate bakers starts work at 3am so that when you walk through our door, everything is warm, fresh, and made from scratch.
@@ -94,7 +94,7 @@ export default function Home() {
       <section className="bg-[#F5E6C8]/50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <span className="text-[#D4A017] text-sm font-semibold tracking-widest uppercase">Why Kanz</span>
+            <span className="text-[#D4A017] text-sm font-semibold tracking-widest uppercase">Why Ovenly</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#2C1810] mt-3" style={{ fontFamily: "'Playfair Display', serif" }}>Our Baking Philosophy</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -137,7 +137,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-[#2C1810]/80" />
         <div className="relative py-16 sm:py-20 px-6 text-center max-w-2xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>Planning a Special Event?</h2>
-          <p className="text-white/70 mb-8 text-base sm:text-lg">From intimate gatherings to grand celebrations, our catering team brings the Kanz experience to your table.</p>
+          <p className="text-white/70 mb-8 text-base sm:text-lg">From intimate gatherings to grand celebrations, our catering team brings the Ovenly experience to your table.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/catering" className="bg-[#D4A017] hover:bg-[#E8B82A] text-[#2C1810] font-bold px-8 py-3.5 rounded-xl transition-colors">Book Catering</Link>
             <Link href="/bulk-order" className="bg-white/10 hover:bg-white/20 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors border border-white/20">Bulk Orders</Link>

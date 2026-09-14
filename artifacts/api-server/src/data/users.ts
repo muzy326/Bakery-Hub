@@ -31,7 +31,7 @@ const adminId = "admin-1";
 const adminHash = bcrypt.hashSync("Admin123!", 10);
 users.set(adminId, {
   id: adminId,
-  name: "Kanz Admin",
+  name: "Ovenly Admin",
   email: "admin@kanzbakery.com",
   passwordHash: adminHash,
   role: "admin",

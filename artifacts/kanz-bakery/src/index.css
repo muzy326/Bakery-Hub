@@ -31,7 +31,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Kanz Bakery — warm amber, oat and ink palette */
+/* Ovenly bekery — warm amber, oat and ink palette */
 :root {
   --background: 38 43% 95%;
   --foreground: 18 29% 17%;

@@ -72,7 +72,7 @@ export default function Catering() {
         <div className="absolute inset-0 opacity-10 bg-cover bg-center" style={{ backgroundImage: "url(https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?w=1400&q=80)" }} />
         <div className="relative">
           <span className="text-[#D4A017] text-sm font-semibold tracking-widest uppercase">Events & Celebrations</span>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mt-2 mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Catering by Kanz</h1>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mt-2 mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Catering by Ovenly</h1>
           <p className="text-white/60 max-w-xl mx-auto text-sm sm:text-base">From boardroom breakfasts to garden weddings — we bring our bakery to your event with the same love and craft in every bite.</p>
         </div>
       </div>

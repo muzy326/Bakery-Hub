@@ -45,7 +45,7 @@ export default function Register() {
           <h1 className="text-3xl font-bold text-[#2C1810]" style={{ fontFamily: "'Playfair Display', serif" }}>
             Create Your Account
           </h1>
-          <p className="text-[#2C1810]/55 mt-2 text-sm">Join thousands of happy Kanz customers</p>
+          <p className="text-[#2C1810]/55 mt-2 text-sm">Join thousands of happy Ovenly bekery customers</p>
         </div>
 
         {/* Perks banner */}

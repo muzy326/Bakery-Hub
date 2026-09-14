@@ -41,10 +41,10 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
             </div>
             <div className="text-left">
               <div className="font-bold text-[#F5E6C8] text-lg leading-none" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Kanz
+                Ovenly
               </div>
               <div className="text-[#D4A017] text-[10px] tracking-widest uppercase leading-none">
-                Bakery
+                bekery
               </div>
             </div>
           </Link>

@@ -77,9 +77,9 @@ export default function CustomerChat() {
           {/* Header */}
           <div className="bg-[#2C1810] px-4 py-3.5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-[#D4A017] rounded-full flex items-center justify-center text-[#2C1810] text-xs font-bold">KB</div>
+               <div className="w-8 h-8 bg-[#D4A017] rounded-full flex items-center justify-center text-[#2C1810] text-xs font-bold">OB</div>
               <div>
-                <div className="text-white font-semibold text-sm">Kanz Bakery Support</div>
+                 <div className="text-white font-semibold text-sm">Ovenly bekery Support</div>
                 <div className="text-[#F5E6C8]/50 text-[10px] flex items-center gap-1">
                   <Circle size={5} className="text-green-400 fill-green-400" /> Usually replies within 1 hour
                 </div>
@@ -119,7 +119,7 @@ export default function CustomerChat() {
                     return (
                       <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                         {!isMe && (
-                          <div className="w-6 h-6 bg-[#D4A017] rounded-full flex items-center justify-center text-[#2C1810] text-[10px] font-bold mr-1.5 shrink-0 mt-0.5">KB</div>
+                           <div className="w-6 h-6 bg-[#D4A017] rounded-full flex items-center justify-center text-[#2C1810] text-[10px] font-bold mr-1.5 shrink-0 mt-0.5">OB</div>
                         )}
                         <div className="max-w-[75%]">
                           <div className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${isMe ? "bg-[#2C1810] text-[#F5E6C8] rounded-br-sm" : "bg-white text-[#2C1810] border border-[#F5E6C8] rounded-bl-sm shadow-sm"}`}>

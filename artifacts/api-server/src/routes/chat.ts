@@ -111,7 +111,7 @@ router.post("/chat/admin/threads/:userId", requireAdmin, (req, res) => {
     threadId: req.params.userId,
     senderRole: "admin",
     senderId: adminId,
-    senderName: "Kanz Bakery",
+    senderName: "Ovenly bekery",
     text: parsed.data.text,
     createdAt: new Date().toISOString(),
   };

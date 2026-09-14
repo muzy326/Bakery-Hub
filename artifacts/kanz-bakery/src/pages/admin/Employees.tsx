@@ -422,7 +422,7 @@ export default function Employees() {
             <ShieldCheck size={14} /> Owner workspace
           </div>
           <h1 className="text-[2rem] font-semibold leading-none tracking-[-0.045em] text-[#302119] sm:text-[2.35rem]" style={{ fontFamily: "var(--app-font-serif)" }}>
-            People at Kanz
+            People at Ovenly
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[#756a61]">
             One clear view of the people who keep the ovens warm, the counters moving, and every order on its way.
