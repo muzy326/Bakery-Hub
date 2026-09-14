@@ -36,7 +36,12 @@ export default function BulkOrder({ cart, onUpdateQty, onRemove, onClearCart }: 
       const res = await fetch("/api/orders/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, items: cart.map((i) => ({ itemId: i.id, name: i.name, quantity: i.quantity })) }),
+        credentials: "include",
+        body: JSON.stringify({
+          ...form,
+          subtotal: total,
+          items: cart.map((i) => ({ itemId: i.id, name: i.name, quantity: i.quantity })),
+        }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json() as { message: string };

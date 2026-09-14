@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { users } from "../data/users.js";
+import { menuItems } from "../data/menu.js";
 
 const router: IRouter = Router();
 
@@ -84,7 +85,22 @@ router.post("/orders/bulk", (req, res) => {
 
   const userId = req.session?.userId ?? null;
   const isFirstOrder = userId ? getUserOrderCount(userId) === 0 : false;
-  const subtotal = parsed.data.subtotal ?? 0;
+  const catalogItems = parsed.data.items.map((item) => {
+    const catalogItem = menuItems.find((menuItem) => menuItem.id === item.itemId);
+    return { requestItem: item, catalogItem };
+  });
+  const unavailableItem = catalogItems.find(({ catalogItem }) => !catalogItem || !catalogItem.available);
+  if (unavailableItem) {
+    res.status(400).json({ error: "One or more selected items are unavailable." });
+    return;
+  }
+
+  // Always calculate the subtotal from the server's menu prices. The optional
+  // client subtotal is kept only for backwards compatibility with old clients.
+  const subtotal = catalogItems.reduce(
+    (sum, { requestItem, catalogItem }) => sum + catalogItem!.price * requestItem.quantity,
+    0,
+  );
   const discountPercent = isFirstOrder ? 50 : 0;
   const total = isFirstOrder ? subtotal * 0.5 : subtotal;
 
@@ -92,7 +108,11 @@ router.post("/orders/bulk", (req, res) => {
     id: `BO-${Date.now()}`,
     userId,
     ...parsed.data,
-    items: parsed.data.items.map(({ price: _p, ...item }) => item),
+    items: catalogItems.map(({ requestItem, catalogItem }) => ({
+      itemId: requestItem.itemId,
+      name: catalogItem!.name,
+      quantity: requestItem.quantity,
+    })),
     subtotal,
     discountPercent,
     discountApplied: isFirstOrder,
