@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -30,38 +31,48 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Kanz Bakery — warm amber & cream palette */
+/* Kanz Bakery — warm amber, oat and ink palette */
 :root {
-  /* Cream background */
-  --background: 35 100% 97%;
-  /* Deep brown foreground */
-  --foreground: 15 40% 13%;
-  /* Card white */
-  --card: 0 0% 100%;
-  --card-foreground: 15 40% 13%;
-  /* Soft cream border */
-  --border: 38 67% 87%;
-  --input: 38 55% 80%;
-  --ring: 43 78% 46%;
-  /* Golden amber primary */
-  --primary: 43 78% 46%;
-  --primary-foreground: 15 40% 13%;
-  /* Light cream secondary */
-  --secondary: 38 67% 92%;
-  --secondary-foreground: 15 40% 13%;
-  /* Muted warm tones */
-  --muted: 38 67% 92%;
-  --muted-foreground: 25 30% 45%;
-  /* Accent = golden */
-  --accent: 43 78% 46%;
-  --accent-foreground: 15 40% 13%;
-  /* Destructive */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-
-  --app-font-sans: 'Inter', sans-serif;
+  --background: 38 43% 95%;
+  --foreground: 18 29% 17%;
+  --card: 42 60% 99%;
+  --card-foreground: 18 29% 17%;
+  --border: 35 26% 84%;
+  --input: 35 26% 78%;
+  --ring: 31 73% 47%;
+  --primary: 31 73% 47%;
+  --primary-foreground: 42 60% 99%;
+  --secondary: 36 35% 89%;
+  --secondary-foreground: 18 29% 17%;
+  --muted: 36 35% 91%;
+  --muted-foreground: 24 13% 43%;
+  --accent: 163 25% 35%;
+  --accent-foreground: 42 60% 99%;
+  --destructive: 1 61% 47%;
+  --destructive-foreground: 42 60% 99%;
+  --app-font-sans: 'DM Sans', sans-serif;
   --app-font-serif: 'Playfair Display', Georgia, serif;
-  --radius: 0.625rem;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 18 29% 12%;
+  --foreground: 38 43% 95%;
+  --card: 20 25% 16%;
+  --card-foreground: 38 43% 95%;
+  --border: 23 20% 27%;
+  --input: 23 20% 30%;
+  --ring: 31 73% 52%;
+  --primary: 31 73% 52%;
+  --primary-foreground: 18 29% 12%;
+  --secondary: 23 20% 24%;
+  --secondary-foreground: 38 43% 95%;
+  --muted: 23 20% 24%;
+  --muted-foreground: 35 18% 70%;
+  --accent: 163 25% 44%;
+  --accent-foreground: 38 43% 95%;
+  --destructive: 1 61% 55%;
+  --destructive-foreground: 18 29% 12%;
 }
 
 @layer base {
@@ -76,4 +87,35 @@
   }
 }
 
-/* Fonts loaded via <link> in index.html */
+@layer components {
+  .field-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #756a61;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .field-input {
+    width: 100%;
+    height: 2.65rem;
+    border: 1px solid #d9cec2;
+    border-radius: 0.75rem;
+    background: #fffdf9;
+    padding: 0 0.75rem;
+    color: #302119;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .field-input:focus {
+    border-color: #b77e4d;
+    box-shadow: 0 0 0 3px rgba(183, 126, 77, 0.14);
+  }
+}
+
+button, input, select, textarea {
+  font: inherit;
+}

@@ -78,6 +78,7 @@ export default function AdminChat() {
       pollRef.current = setInterval(() => fetchMessages(selectedUserId), 3000);
       return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }
+    return undefined;
   }, [selectedUserId]);
 
   useEffect(() => {

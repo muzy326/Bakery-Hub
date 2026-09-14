@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ShoppingBag, Tag, Package, MessageSquare, LogOut, Menu, X, Croissant, ChevronRight } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Tag, Package, MessageSquare, LogOut, Menu, X, Croissant, ChevronRight, UsersRound } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
 
 const navItems = [
   { path: "/admin/orders",     label: "Orders",          icon: ShoppingBag },
   { path: "/admin/products",   label: "Products",        icon: Package },
   { path: "/admin/categories", label: "Categories",      icon: Tag },
+  { path: "/admin/employees",  label: "Employees",       icon: UsersRound },
   { path: "/admin/chat",       label: "Customer Chat",   icon: MessageSquare },
 ];
 
@@ -43,7 +44,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {navItems.map(({ path, label, icon: Icon }) => {
           const active = location.startsWith(path);
           return (
-            <Link key={path} href={path} onClick={() => setSidebarOpen(false)}
+            <Link key={path} href={path} data-testid={`link-admin-${path.split("/").pop()}`} onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active ? "bg-[#D4A017] text-[#2C1810]" : "text-[#F5E6C8]/60 hover:text-[#F5E6C8] hover:bg-white/8"}`}>
               <Icon size={16} />
               {label}
@@ -64,7 +65,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <div className="text-[#F5E6C8]/40 text-[10px] truncate">{user?.email}</div>
           </div>
         </div>
-        <button onClick={handleLogout} className="w-full flex items-center gap-2 text-xs text-[#F5E6C8]/50 hover:text-red-400 transition-colors px-1 py-1.5">
+        <button data-testid="button-admin-sign-out" onClick={handleLogout} className="w-full flex items-center gap-2 text-xs text-[#F5E6C8]/50 hover:text-red-400 transition-colors px-1 py-1.5">
           <LogOut size={13} /> Sign out
         </button>
       </div>
@@ -92,7 +93,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="h-14 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 shrink-0 gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+          <button data-testid="button-open-admin-menu" onClick={() => setSidebarOpen(true)} className="md:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-500">
             <Menu size={18} />
           </button>
           <div className="flex items-center gap-2 text-sm text-gray-500 hidden sm:flex">

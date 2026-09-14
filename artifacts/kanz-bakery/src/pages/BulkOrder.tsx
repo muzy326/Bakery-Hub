@@ -138,7 +138,7 @@ export default function BulkOrder({ cart, onUpdateQty, onRemove, onClearCart }: 
                   ].map(({ key, label, type, placeholder }) => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-[#2C1810] mb-1.5">{label} <span className="text-red-500">*</span></label>
-                      <input type={type} required value={(form as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder}
+                      <input type={type} required value={(form as unknown as Record<string, string>)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} placeholder={placeholder}
                         className="w-full px-4 py-3 rounded-xl border border-[#D4A017]/20 focus:outline-none focus:ring-2 focus:ring-[#D4A017]/40 text-[#2C1810] text-sm placeholder:text-[#2C1810]/30" />
                     </div>
                   ))}

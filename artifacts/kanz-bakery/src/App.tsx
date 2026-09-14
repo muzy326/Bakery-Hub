@@ -18,6 +18,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import ManageCategories from './pages/admin/ManageCategories';
 import ManageProducts from './pages/admin/ManageProducts';
 import AdminChat from './pages/admin/AdminChat';
+import Employees from './pages/admin/Employees';
 import type { CartItem } from './types';
 import type { MenuItem } from '@workspace/api-client-react';
 
@@ -81,6 +82,7 @@ function AppShell() {
             <Route path="/admin/orders"     component={AdminOrders}     />
             <Route path="/admin/products"   component={ManageProducts}  />
             <Route path="/admin/categories" component={ManageCategories}/>
+             <Route path="/admin/employees"  component={Employees}       />
             <Route path="/admin/chat"       component={AdminChat}       />
             <Route><AdminOrders /></Route>
           </Switch>
