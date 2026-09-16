@@ -1,71 +1,64 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const rawPort = process.env.PORT;
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from 'vite';
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { mockupPreviewPlugin } from './mockupPreviewPlugin';
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  base: basePath,
+  base: '/',
+
   plugins: [
     mockupPreviewPlugin(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
+
+    ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
+          await import('@replit/vite-plugin-cartographer').then((m) =>
             m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
+              root: path.resolve(__dirname, '..'),
             }),
           ),
         ]
       : []),
   ],
+
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
-  root: path.resolve(import.meta.dirname),
+
+  root: __dirname,
+
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist"),
+    outDir: path.resolve(__dirname, 'dist'),
     emptyOutDir: true,
   },
+
   server: {
-    port,
-    host: "0.0.0.0",
+    port: 5173,
+    strictPort: true,
+    host: '0.0.0.0',
     allowedHosts: true,
+
     fs: {
       strict: true,
     },
   },
+
   preview: {
-    port,
-    host: "0.0.0.0",
+    port: 4173,
+    host: '0.0.0.0',
     allowedHosts: true,
   },
 });

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { users, toSafeUser } from "../data/users.js";
-import { bulkOrders, cateringRequests } from "./orders.js";
+import { bulkOrders, cateringRequests, type BulkOrder } from "./orders.js";
 import { menuItems, type MenuItem } from "../data/menu.js";
 import { categories, type Category } from "../data/categories.js";
 
