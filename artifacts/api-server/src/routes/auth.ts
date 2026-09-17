@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -30,7 +30,7 @@ const LoginSchema = z.object({
 // POST /api/auth/register
 router.post(
   "/auth/register",
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const parsed = RegisterSchema.safeParse(
       req.body,
     );
@@ -88,7 +88,7 @@ router.post(
 // POST /api/auth/login
 router.post(
   "/auth/login",
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const parsed = LoginSchema.safeParse(
       req.body,
     );
@@ -142,7 +142,7 @@ router.post(
 // POST /api/auth/logout
 router.post(
   "/auth/logout",
-  (req, res) => {
+  (req: Request, res: Response) => {
     req.session.destroy(() => {
       res.json({
         success: true,
@@ -154,7 +154,7 @@ router.post(
 // GET /api/auth/me
 router.get(
   "/auth/me",
-  (req, res) => {
+  (req: Request, res: Response) => {
     const userId =
       req.session.userId;
 

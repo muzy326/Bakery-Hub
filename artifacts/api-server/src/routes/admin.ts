@@ -36,7 +36,7 @@ function requireAdmin(
 
 // --- Orders ---
 
-router.get("/admin/orders", requireAdmin, (_req, res) => {
+router.get("/admin/orders", requireAdmin, (_req: Request, res: Response) => {
   res.json({
     bulkOrders: bulkOrders.slice().reverse(),
     cateringRequests: cateringRequests.slice().reverse(),
@@ -45,7 +45,7 @@ router.get("/admin/orders", requireAdmin, (_req, res) => {
 
 // --- Dashboard analytics ---
 
-router.get("/admin/dashboard", requireAdmin, (_req, res) => {
+router.get("/admin/dashboard", requireAdmin, (_req: Request, res: Response) => {
   const revenueStatuses = new Set([
     "confirmed",
     "ready",
@@ -56,8 +56,8 @@ router.get("/admin/dashboard", requireAdmin, (_req, res) => {
     categories.map((category) => [category.id, category]),
   );
 
-  const productStats = new Map<
-    string,
+  const productStats = new Map
+    <string,
     {
       id: string;
       name: string;
@@ -153,8 +153,8 @@ router.get("/admin/dashboard", requireAdmin, (_req, res) => {
       color: colorPalette[index % colorPalette.length],
     }));
 
-  const categoryStats = new Map<
-    string,
+  const categoryStats = new Map
+    <string,
     {
       id: string;
       label: string;
@@ -278,7 +278,7 @@ router.get("/admin/dashboard", requireAdmin, (_req, res) => {
 router.patch(
   "/admin/orders/bulk/:id/status",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const { status } = req.body;
 
     const order = bulkOrders.find(
@@ -313,7 +313,7 @@ router.patch(
 router.patch(
   "/admin/orders/catering/:id/status",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const { status } = req.body;
 
     const request = cateringRequests.find(
@@ -349,7 +349,7 @@ router.patch(
 router.get(
   "/admin/categories",
   requireAdmin,
-  (_req, res) => {
+  (_req: Request, res: Response) => {
     res.json({ categories });
   },
 );
@@ -369,7 +369,7 @@ const CategorySchema = z.object({
 router.post(
   "/admin/categories",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed = CategorySchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -406,7 +406,7 @@ router.post(
 router.patch(
   "/admin/categories/:id",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const idx = categories.findIndex(
       (c) => c.id === req.params.id,
     );
@@ -439,7 +439,7 @@ router.patch(
 router.delete(
   "/admin/categories/:id",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const idx = categories.findIndex(
       (c) => c.id === req.params.id,
     );
@@ -462,7 +462,7 @@ router.delete(
 router.get(
   "/admin/products",
   requireAdmin,
-  (_req, res) => {
+  (_req: Request, res: Response) => {
     const products = menuItems.map((item) => ({
       ...item,
       averageRating:
@@ -492,7 +492,7 @@ const ProductSchema = z.object({
 router.post(
   "/admin/products",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed = ProductSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -520,7 +520,7 @@ router.post(
 router.patch(
   "/admin/products/:id",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const item = menuItems.find(
       (i) => i.id === req.params.id,
     );
@@ -553,7 +553,7 @@ router.patch(
 router.delete(
   "/admin/products/:id",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const idx = menuItems.findIndex(
       (i) => i.id === req.params.id,
     );
@@ -576,7 +576,7 @@ router.delete(
 router.get(
   "/admin/users",
   requireAdmin,
-  (_req, res) => {
+  (_req: Request, res: Response) => {
     const allUsers = [...users.values()].map(
       toSafeUser,
     );

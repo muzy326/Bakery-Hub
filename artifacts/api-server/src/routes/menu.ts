@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 
 import { menuItems } from "../data/menu.js";
@@ -6,7 +6,7 @@ import { menuItems } from "../data/menu.js";
 const router = Router();
 
 // GET /api/menu - list all menu items
-router.get("/menu", (_req, res) => {
+router.get("/menu", (_req: Request, res: Response) => {
   const itemsWithStats = menuItems.map((item) => ({
     ...item,
     averageRating:
@@ -28,7 +28,7 @@ router.get("/menu", (_req, res) => {
 });
 
 // GET /api/menu/:id - get a single item
-router.get("/menu/:id", (req, res) => {
+router.get("/menu/:id", (req: Request, res: Response) => {
   const item = menuItems.find(
     (i) => i.id === req.params.id,
   );
@@ -63,7 +63,7 @@ const RateSchema = z.object({
 
 router.post(
   "/menu/:id/rate",
-  (req, res) => {
+  (req: Request, res: Response) => {
     const item = menuItems.find(
       (i) => i.id === req.params.id,
     );

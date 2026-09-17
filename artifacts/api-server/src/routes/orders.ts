@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 
 import { users } from "../data/users.js";
@@ -92,7 +92,7 @@ const BulkOrderSchema = z.object({
   subtotal: z.number().min(0).optional(),
 });
 
-router.post("/orders/bulk", (req, res) => {
+router.post("/orders/bulk", (req: Request, res: Response) => {
   const parsed = BulkOrderSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -179,12 +179,12 @@ router.post("/orders/bulk", (req, res) => {
   });
 });
 
-router.get("/orders/bulk", (_req, res) => {
+router.get("/orders/bulk", (_req: Request, res: Response) => {
   res.json({ orders: bulkOrders });
 });
 
 // GET /api/orders/my — orders for the logged-in user
-router.get("/orders/my", (req, res) => {
+router.get("/orders/my", (req: Request, res: Response) => {
   const userId = req.session?.userId;
 
   if (!userId) {
@@ -221,7 +221,7 @@ const CateringSchema = z.object({
   budget: z.string().min(1),
 });
 
-router.post("/orders/catering", (req, res) => {
+router.post("/orders/catering", (req: Request, res: Response) => {
   const parsed = CateringSchema.safeParse(req.body);
 
   if (!parsed.success) {

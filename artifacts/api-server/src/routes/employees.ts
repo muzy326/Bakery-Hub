@@ -142,7 +142,7 @@ function roundMoney(value: number): number {
 router.get(
   "/admin/employees",
   requireAdmin,
-  (_req, res) => {
+  (_req: Request, res: Response) => {
     res.json({
       employees: employees
         .slice()
@@ -154,7 +154,7 @@ router.get(
 router.post(
   "/admin/employees",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed =
       EmployeeSchema.safeParse(
         req.body,
@@ -204,7 +204,7 @@ router.post(
 router.patch(
   "/admin/employees/:id",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const employeeId = getParam(
       req,
       "id",
@@ -279,7 +279,7 @@ router.patch(
 router.get(
   "/admin/attendance",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const date =
       typeof req.query.date === "string"
         ? req.query.date
@@ -314,7 +314,7 @@ router.get(
 router.post(
   "/admin/attendance",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed =
       AttendanceSchema.safeParse(
         req.body,
@@ -389,7 +389,7 @@ router.post(
 router.get(
   "/admin/salaries",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const month =
       typeof req.query.month === "string"
         ? req.query.month
@@ -421,7 +421,7 @@ router.get(
 router.post(
   "/admin/salaries",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed =
       monthSchema.safeParse(
         req.body?.month,
@@ -494,7 +494,7 @@ router.post(
 router.get(
   "/admin/payments",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const month =
       typeof req.query.month === "string"
         ? req.query.month
@@ -538,7 +538,7 @@ router.get(
 router.post(
   "/admin/payments",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed =
       PaymentSchema.safeParse(
         req.body,

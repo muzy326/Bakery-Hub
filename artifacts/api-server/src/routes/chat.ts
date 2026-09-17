@@ -91,7 +91,7 @@ function requireAdmin(
 router.get(
   "/chat/thread",
   requireAuth,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const userId = getUserId(req);
 
     if (!userId) {
@@ -115,7 +115,7 @@ router.get(
 router.post(
   "/chat/thread",
   requireAuth,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed = MessageSchema.safeParse(
       req.body,
     );
@@ -193,7 +193,7 @@ router.post(
 router.get(
   "/chat/admin/threads",
   requireAdmin,
-  (_req, res) => {
+  (_req: Request, res: Response) => {
     const threads = [...chatThreads.values()]
       .map((t) => ({
         userId: t.userId,
@@ -228,7 +228,7 @@ router.get(
 router.get(
   "/chat/admin/threads/:userId",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const userId = getParam(
       req,
       "userId",
@@ -270,7 +270,7 @@ router.get(
 router.post(
   "/chat/admin/threads/:userId",
   requireAdmin,
-  (req, res) => {
+  (req: Request, res: Response) => {
     const parsed =
       MessageSchema.safeParse(
         req.body,
