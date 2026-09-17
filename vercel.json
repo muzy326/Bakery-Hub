@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @workspace/kanz-bakery build",
+  "buildCommand": "pnpm --filter @workspace/kanz-bakery build && pnpm --filter @workspace/api-server build",
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "artifacts/kanz-bakery/dist",
   "rewrites": [
