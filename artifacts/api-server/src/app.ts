@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors";
 import session from "express-session";
-import pinoHttp from "pino-http";
+
 import router from "./routes/index.js";
-import { logger } from "./lib/logger.js";
+
+
 
 const app = express();
 
@@ -11,19 +12,6 @@ const app = express();
 // are set and forwarded correctly in production.
 app.set("trust proxy", 1);
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
-      },
-      res(res) {
-        return { statusCode: res.statusCode };
-      },
-    },
-  }),
-);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
