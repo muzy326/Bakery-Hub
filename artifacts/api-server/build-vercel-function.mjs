@@ -3,18 +3,22 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
+import { rename, rm } from "node:fs/promises";
 
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(artifactDir, "../..");
+const apiDir = path.resolve(repoRoot, "api");
+
+await rm(apiDir, { recursive: true, force: true });
 
 await esbuild({
   entryPoints: [path.resolve(artifactDir, "src/app.ts")],
   platform: "node",
   bundle: true,
   format: "esm",
-  outfile: path.resolve(repoRoot, "api/index.js"),
+  outdir: apiDir,
   outExtension: { ".js": ".js" },
   logLevel: "info",
   external: [
@@ -103,7 +107,14 @@ globalThis.__filename = __bannerUrl.fileURLToPath(import.meta.url);
 globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
 `,
   },
-}).catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+})
+  .then(async () => {
+    await rename(
+      path.resolve(apiDir, "app.js"),
+      path.resolve(apiDir, "index.js"),
+    );
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
