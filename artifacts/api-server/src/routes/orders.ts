@@ -1,9 +1,10 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import { z } from "zod";
+
 import { users } from "../data/users.js";
 import { menuItems } from "../data/menu.js";
 
-const router: IRouter = Router();
+const router = Router();
 
 export interface BulkOrder {
   id: string;
@@ -38,18 +39,23 @@ export interface CateringRequest {
 }
 
 export const bulkOrders: BulkOrder[] = [];
+
 export const cateringRequests: CateringRequest[] = [];
 
 // Seed demo data
 const demoDate = new Date();
 demoDate.setDate(demoDate.getDate() + 3);
+
 bulkOrders.push({
   id: "BO-DEMO-001",
   userId: null,
   name: "Demo Customer",
   email: "demo@example.com",
   phone: "+1 (555) 000-0001",
-  items: [{ itemId: "1", name: "Sourdough Loaf", quantity: 4 }, { itemId: "2", name: "Cinnamon Roll", quantity: 6 }],
+  items: [
+    { itemId: "1", name: "Sourdough Loaf", quantity: 4 },
+    { itemId: "2", name: "Cinnamon Roll", quantity: 6 },
+  ],
   pickupDate: demoDate.toISOString().split("T")[0],
   notes: "Please slice the bread",
   createdAt: new Date(Date.now() - 86400000).toISOString(),
@@ -63,14 +69,24 @@ bulkOrders.push({
 // In-memory order-count per user (for first-time discount)
 function getUserOrderCount(userId: string | null): number {
   if (!userId) return 999; // guests don't get discount
-  return bulkOrders.filter((o) => o.userId === userId).length;
+
+  return bulkOrders.filter((order) => order.userId === userId).length;
 }
 
 const BulkOrderSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   phone: z.string().min(1),
-  items: z.array(z.object({ itemId: z.string(), name: z.string(), quantity: z.number().int().min(1), price: z.number().optional() })).min(1),
+  items: z
+    .array(
+      z.object({
+        itemId: z.string(),
+        name: z.string(),
+        quantity: z.number().int().min(1),
+        price: z.number().optional(),
+      }),
+    )
+    .min(1),
   pickupDate: z.string().min(1),
   notes: z.string().optional().default(""),
   subtotal: z.number().min(0).optional(),
@@ -78,29 +94,50 @@ const BulkOrderSchema = z.object({
 
 router.post("/orders/bulk", (req, res) => {
   const parsed = BulkOrderSchema.safeParse(req.body);
+
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid order data", details: parsed.error.issues });
+    res.status(400).json({
+      error: "Invalid order data",
+      details: parsed.error.issues,
+    });
     return;
   }
 
   const userId = req.session?.userId ?? null;
-  const isFirstOrder = userId ? getUserOrderCount(userId) === 0 : false;
+  const isFirstOrder = userId
+    ? getUserOrderCount(userId) === 0
+    : false;
+
   const catalogItems = parsed.data.items.map((item) => {
-    const catalogItem = menuItems.find((menuItem) => menuItem.id === item.itemId);
-    return { requestItem: item, catalogItem };
+    const catalogItem = menuItems.find(
+      (menuItem) => menuItem.id === item.itemId,
+    );
+
+    return {
+      requestItem: item,
+      catalogItem,
+    };
   });
-  const unavailableItem = catalogItems.find(({ catalogItem }) => !catalogItem || !catalogItem.available);
+
+  const unavailableItem = catalogItems.find(
+    ({ catalogItem }) => !catalogItem || !catalogItem.available,
+  );
+
   if (unavailableItem) {
-    res.status(400).json({ error: "One or more selected items are unavailable." });
+    res.status(400).json({
+      error: "One or more selected items are unavailable.",
+    });
     return;
   }
 
-  // Always calculate the subtotal from the server's menu prices. The optional
-  // client subtotal is kept only for backwards compatibility with old clients.
+  // Always calculate the subtotal from the server's menu prices.
+  // The optional client subtotal is kept for backwards compatibility.
   const subtotal = catalogItems.reduce(
-    (sum, { requestItem, catalogItem }) => sum + catalogItem!.price * requestItem.quantity,
+    (sum, { requestItem, catalogItem }) =>
+      sum + catalogItem!.price * requestItem.quantity,
     0,
   );
+
   const discountPercent = isFirstOrder ? 50 : 0;
   const total = isFirstOrder ? subtotal * 0.5 : subtotal;
 
@@ -119,14 +156,27 @@ router.post("/orders/bulk", (req, res) => {
     total,
     createdAt: new Date().toISOString(),
     status: "pending",
+    notes: parsed.data.notes,
+    pickupDate: parsed.data.pickupDate,
+    name: parsed.data.name,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
   };
+
   bulkOrders.push(order);
 
   const msg = isFirstOrder
     ? `🎉 First-time order! Your 50% welcome discount has been applied. Total: $${total.toFixed(2)} (was $${subtotal.toFixed(2)}). We'll contact you within 24 hours to confirm!`
     : "Your bulk order has been received! We'll contact you within 24 hours to confirm.";
 
-  res.status(201).json({ success: true, orderId: order.id, discountApplied: isFirstOrder, discountPercent, total, message: msg });
+  res.status(201).json({
+    success: true,
+    orderId: order.id,
+    discountApplied: isFirstOrder,
+    discountPercent,
+    total,
+    message: msg,
+  });
 });
 
 router.get("/orders/bulk", (_req, res) => {
@@ -136,20 +186,28 @@ router.get("/orders/bulk", (_req, res) => {
 // GET /api/orders/my — orders for the logged-in user
 router.get("/orders/my", (req, res) => {
   const userId = req.session?.userId;
+
   if (!userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
+
   const user = users.get(userId);
+
   if (!user) {
     res.status(401).json({ error: "Not found" });
     return;
   }
 
-  const myBulk = bulkOrders.filter((o) => o.userId === userId);
-  const myCatering = cateringRequests.filter((o) => o.userId === userId);
+  const myBulk = bulkOrders.filter((order) => order.userId === userId);
+  const myCatering = cateringRequests.filter(
+    (order) => order.userId === userId,
+  );
 
-  res.json({ bulkOrders: myBulk, cateringRequests: myCatering });
+  res.json({
+    bulkOrders: myBulk,
+    cateringRequests: myCatering,
+  });
 });
 
 const CateringSchema = z.object({
@@ -165,12 +223,17 @@ const CateringSchema = z.object({
 
 router.post("/orders/catering", (req, res) => {
   const parsed = CateringSchema.safeParse(req.body);
+
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid catering data", details: parsed.error.issues });
+    res.status(400).json({
+      error: "Invalid catering data",
+      details: parsed.error.issues,
+    });
     return;
   }
 
   const userId = req.session?.userId ?? null;
+
   const request: CateringRequest = {
     id: `CAT-${Date.now()}`,
     userId,
@@ -178,12 +241,14 @@ router.post("/orders/catering", (req, res) => {
     createdAt: new Date().toISOString(),
     status: "pending",
   };
+
   cateringRequests.push(request);
 
   res.status(201).json({
     success: true,
     requestId: request.id,
-    message: "Your catering request has been received! Our events team will reach out within 48 hours.",
+    message:
+      "Your catering request has been received! Our events team will reach out within 48 hours.",
   });
 });
 
