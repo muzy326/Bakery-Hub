@@ -1,3 +1,4 @@
+
 import {
   Router,
   type Request,
@@ -6,13 +7,13 @@ import {
 } from "express";
 
 import { z } from "zod";
+import { desc, eq } from "drizzle-orm";
 
+import { db } from "@workspace/db";
 import {
-  chatThreads,
-  type ChatMessage,
-} from "../data/chat.js";
-
-import { users } from "../data/users.js";
+  chatMessages as chatMessagesTable,
+  users as usersTable,
+} from "@workspace/db";
 
 const router = Router();
 
@@ -60,38 +61,12 @@ function requireAuth(
 }
 
 // Require admin middleware
-function requireAdmin(
+async function requireAdmin(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    res.status(401).json({
-      error: "Not authenticated",
-    });
-    return;
-  }
-
-  const user = users.get(userId);
-
-  if (!user || user.role !== "admin") {
-    res.status(403).json({
-      error: "Forbidden",
-    });
-    return;
-  }
-
-  next();
-}
-
-// GET /api/chat/thread
-// Customer gets their own thread
-router.get(
-  "/chat/thread",
-  requireAuth,
-  (req: Request, res: Response) => {
+): Promise<void> {
+  try {
     const userId = getUserId(req);
 
     if (!userId) {
@@ -101,12 +76,63 @@ router.get(
       return;
     }
 
-    const thread = chatThreads.get(userId);
+    const foundUsers = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
 
-    res.json({
-      messages: thread?.messages ?? [],
-      threadId: userId,
+    const user = foundUsers[0];
+
+    if (!user || user.role !== "admin") {
+      res.status(403).json({
+        error: "Forbidden",
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    console.error("Admin authentication error:", error);
+
+    res.status(500).json({
+      error: "Failed to authenticate admin",
     });
+  }
+}
+
+// GET /api/chat/thread
+// Customer gets their own thread
+router.get(
+  "/chat/thread",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+
+      if (!userId) {
+        res.status(401).json({
+          error: "Not authenticated",
+        });
+        return;
+      }
+
+      const messages = await db
+        .select()
+        .from(chatMessagesTable)
+        .where(eq(chatMessagesTable.threadId, userId))
+        .orderBy(chatMessagesTable.createdAt);
+
+      res.json({
+        messages,
+        threadId: userId,
+      });
+    } catch (error) {
+      console.error("Failed to fetch chat thread:", error);
+
+      res.status(500).json({
+        error: "Failed to fetch chat thread",
+      });
+    }
   },
 );
 
@@ -115,72 +141,78 @@ router.get(
 router.post(
   "/chat/thread",
   requireAuth,
-  (req: Request, res: Response) => {
-    const parsed = MessageSchema.safeParse(
-      req.body,
-    );
+  async (req: Request, res: Response) => {
+    try {
+      const parsed = MessageSchema.safeParse(req.body);
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid message",
-      });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid message",
+        });
+        return;
+      }
 
-    const userId = getUserId(req);
+      const userId = getUserId(req);
 
-    if (!userId) {
-      res.status(401).json({
-        error: "Not authenticated",
-      });
-      return;
-    }
+      if (!userId) {
+        res.status(401).json({
+          error: "Not authenticated",
+        });
+        return;
+      }
 
-    const user = users.get(userId);
+      const foundUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
 
-    if (!user) {
-      res.status(401).json({
-        error: "Not found",
-      });
-      return;
-    }
+      const user = foundUsers[0];
 
-    let thread = chatThreads.get(userId);
+      if (!user) {
+        res.status(401).json({
+          error: "User not found",
+        });
+        return;
+      }
 
-    if (!thread) {
-      thread = {
-        userId,
-        userName: user.name,
-        userEmail: user.email,
-        messages: [],
-        lastMessageAt:
-          new Date().toISOString(),
-        unreadByAdmin: 0,
-      };
-
-      chatThreads.set(userId, thread);
-    }
-
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random()
+      const messageId = `msg-${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2, 7)}`,
-      threadId: userId,
-      senderRole: "customer",
-      senderId: userId,
-      senderName: user.name,
-      text: parsed.data.text,
-      createdAt:
-        new Date().toISOString(),
-    };
+        .slice(2, 7)}`;
 
-    thread.messages.push(msg);
-    thread.lastMessageAt = msg.createdAt;
-    thread.unreadByAdmin += 1;
+      const createdAt = new Date();
 
-    res.status(201).json({
-      message: msg,
-    });
+      const insertedMessages = await db
+        .insert(chatMessagesTable)
+        .values({
+          id: messageId,
+          threadId: userId,
+          senderRole: "customer",
+          senderId: userId,
+          senderName: user.name,
+          text: parsed.data.text,
+          createdAt,
+        })
+        .returning();
+
+      const message = insertedMessages[0];
+
+      if (!message) {
+        res.status(500).json({
+          error: "Failed to create message",
+        });
+        return;
+      }
+
+      res.status(201).json({
+        message,
+      });
+    } catch (error) {
+      console.error("Failed to send chat message:", error);
+
+      res.status(500).json({
+        error: "Failed to send chat message",
+      });
+    }
   },
 );
 
@@ -193,33 +225,70 @@ router.post(
 router.get(
   "/chat/admin/threads",
   requireAdmin,
-  (_req: Request, res: Response) => {
-    const threads = [...chatThreads.values()]
-      .map((t) => ({
-        userId: t.userId,
-        userName: t.userName,
-        userEmail: t.userEmail,
-        lastMessageAt: t.lastMessageAt,
-        unreadByAdmin: t.unreadByAdmin,
-        lastMessage:
-          t.messages[
-            t.messages.length - 1
-          ]?.text ?? "",
-        messageCount: t.messages.length,
-      }))
-      .sort(
-        (a, b) =>
-          new Date(
-            b.lastMessageAt,
-          ).getTime() -
-          new Date(
-            a.lastMessageAt,
-          ).getTime(),
-      );
+  async (_req: Request, res: Response) => {
+    try {
+      const messages = await db
+        .select()
+        .from(chatMessagesTable)
+        .orderBy(desc(chatMessagesTable.createdAt));
 
-    res.json({
-      threads,
-    });
+      const threadMap = new Map<
+        string,
+        {
+          userId: string;
+          userName: string;
+          userEmail: string;
+          lastMessageAt: Date;
+          unreadByAdmin: number;
+          lastMessage: string;
+          messageCount: number;
+        }
+      >();
+
+      for (const message of messages) {
+        const existing = threadMap.get(message.threadId);
+
+        if (!existing) {
+          const customerUsers = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.id, message.threadId));
+
+          const customer = customerUsers[0];
+
+          if (!customer) {
+            continue;
+          }
+
+          threadMap.set(message.threadId, {
+            userId: message.threadId,
+            userName: customer.name,
+            userEmail: customer.email,
+            lastMessageAt: message.createdAt,
+            unreadByAdmin:
+              message.senderRole === "customer" ? 1 : 0,
+            lastMessage: message.text,
+            messageCount: 1,
+          });
+        } else {
+          existing.messageCount += 1;
+
+          if (message.senderRole === "customer") {
+            existing.unreadByAdmin += 1;
+          }
+        }
+      }
+
+      res.json({
+        threads: [...threadMap.values()],
+      });
+    } catch (error) {
+      console.error("Failed to fetch admin chat threads:", error);
+
+      res.status(500).json({
+        error: "Failed to fetch chat threads",
+      });
+    }
   },
 );
 
@@ -228,40 +297,59 @@ router.get(
 router.get(
   "/chat/admin/threads/:userId",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const userId = getParam(
-      req,
-      "userId",
-    );
+  async (req: Request, res: Response) => {
+    try {
+      const userId = getParam(req, "userId");
 
-    if (!userId) {
-      res.status(400).json({
-        error: "Invalid user ID",
+      if (!userId) {
+        res.status(400).json({
+          error: "Invalid user ID",
+        });
+        return;
+      }
+
+      const customerUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
+
+      const customer = customerUsers[0];
+
+      if (!customer) {
+        res.status(404).json({
+          error: "User not found",
+        });
+        return;
+      }
+
+      const messages = await db
+        .select()
+        .from(chatMessagesTable)
+        .where(eq(chatMessagesTable.threadId, userId))
+        .orderBy(chatMessagesTable.createdAt);
+
+      if (messages.length === 0) {
+        res.status(404).json({
+          error: "Thread not found",
+        });
+        return;
+      }
+
+      res.json({
+        messages,
+        thread: {
+          userId: customer.id,
+          userName: customer.name,
+          userEmail: customer.email,
+        },
       });
-      return;
-    }
+    } catch (error) {
+      console.error("Failed to fetch admin chat:", error);
 
-    const thread =
-      chatThreads.get(userId);
-
-    if (!thread) {
-      res.status(404).json({
-        error: "Thread not found",
+      res.status(500).json({
+        error: "Failed to fetch chat thread",
       });
-      return;
     }
-
-    // Mark as read
-    thread.unreadByAdmin = 0;
-
-    res.json({
-      messages: thread.messages,
-      thread: {
-        userId: thread.userId,
-        userName: thread.userName,
-        userEmail: thread.userEmail,
-      },
-    });
   },
 );
 
@@ -270,78 +358,97 @@ router.get(
 router.post(
   "/chat/admin/threads/:userId",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const parsed =
-      MessageSchema.safeParse(
-        req.body,
-      );
+  async (req: Request, res: Response) => {
+    try {
+      const parsed = MessageSchema.safeParse(req.body);
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid message",
-      });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid message",
+        });
+        return;
+      }
 
-    const adminId = getUserId(req);
+      const adminId = getUserId(req);
 
-    if (!adminId) {
-      res.status(401).json({
-        error: "Not authenticated",
-      });
-      return;
-    }
+      if (!adminId) {
+        res.status(401).json({
+          error: "Not authenticated",
+        });
+        return;
+      }
 
-    const admin = users.get(adminId);
+      const adminUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, adminId));
 
-    if (!admin) {
-      res.status(401).json({
-        error: "Admin not found",
-      });
-      return;
-    }
+      const admin = adminUsers[0];
 
-    const userId = getParam(
-      req,
-      "userId",
-    );
+      if (!admin || admin.role !== "admin") {
+        res.status(403).json({
+          error: "Admin not found",
+        });
+        return;
+      }
 
-    if (!userId) {
-      res.status(400).json({
-        error: "Invalid user ID",
-      });
-      return;
-    }
+      const userId = getParam(req, "userId");
 
-    const thread =
-      chatThreads.get(userId);
+      if (!userId) {
+        res.status(400).json({
+          error: "Invalid user ID",
+        });
+        return;
+      }
 
-    if (!thread) {
-      res.status(404).json({
-        error: "Thread not found",
-      });
-      return;
-    }
+      const customerUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
 
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random()
+      if (!customerUsers[0]) {
+        res.status(404).json({
+          error: "Customer not found",
+        });
+        return;
+      }
+
+      const messageId = `msg-${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2, 7)}`,
-      threadId: userId,
-      senderRole: "admin",
-      senderId: adminId,
-      senderName: "Ovenly bekery",
-      text: parsed.data.text,
-      createdAt:
-        new Date().toISOString(),
-    };
+        .slice(2, 7)}`;
 
-    thread.messages.push(msg);
-    thread.lastMessageAt = msg.createdAt;
+      const insertedMessages = await db
+        .insert(chatMessagesTable)
+        .values({
+          id: messageId,
+          threadId: userId,
+          senderRole: "admin",
+          senderId: adminId,
+          senderName: admin.name,
+          text: parsed.data.text,
+          createdAt: new Date(),
+        })
+        .returning();
 
-    res.status(201).json({
-      message: msg,
-    });
+      const message = insertedMessages[0];
+
+      if (!message) {
+        res.status(500).json({
+          error: "Failed to create admin message",
+        });
+        return;
+      }
+
+      res.status(201).json({
+        message,
+      });
+    } catch (error) {
+      console.error("Failed to send admin chat message:", error);
+
+      res.status(500).json({
+        error: "Failed to send admin message",
+      });
+    }
   },
 );
 

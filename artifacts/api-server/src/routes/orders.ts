@@ -1,8 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 
-import { users } from "../data/users.js";
-import { menuItems } from "../data/menu.js";
+import { db } from "@workspace/db";
+import {
+  bulkOrders as bulkOrdersTable,
+  cateringRequests as cateringRequestsTable,
+  menuItems as menuItemsTable,
+  users as usersTable,
+} from "@workspace/db";
 
 const router = Router();
 
@@ -16,7 +22,12 @@ export interface BulkOrder {
   pickupDate: string;
   notes: string;
   createdAt: string;
-  status: "pending" | "confirmed" | "ready" | "completed" | "cancelled";
+  status:
+    | "pending"
+    | "confirmed"
+    | "ready"
+    | "completed"
+    | "cancelled";
   discountApplied: boolean;
   discountPercent: number;
   subtotal: number;
@@ -35,42 +46,68 @@ export interface CateringRequest {
   requirements: string;
   budget: string;
   createdAt: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status:
+    | "pending"
+    | "confirmed"
+    | "completed"
+    | "cancelled";
 }
 
-export const bulkOrders: BulkOrder[] = [];
+function mapBulkOrder(
+  order: typeof bulkOrdersTable.$inferSelect,
+): BulkOrder {
+  return {
+    id: order.id,
+    userId: order.userId,
+    name: order.name,
+    email: order.email,
+    phone: order.phone,
+    items: order.items as {
+      itemId: string;
+      name: string;
+      quantity: number;
+    }[],
+    pickupDate: order.pickupDate,
+    notes: order.notes,
+    createdAt: order.createdAt.toISOString(),
+    status: order.status as BulkOrder["status"],
+    discountApplied: order.discountApplied,
+    discountPercent: Number(order.discountPercent),
+    subtotal: Number(order.subtotal),
+    total: Number(order.total),
+  };
+}
 
-export const cateringRequests: CateringRequest[] = [];
+function mapCateringRequest(
+  request: typeof cateringRequestsTable.$inferSelect,
+): CateringRequest {
+  return {
+    id: request.id,
+    userId: request.userId,
+    name: request.name,
+    email: request.email,
+    phone: request.phone,
+    eventType: request.eventType,
+    eventDate: request.eventDate,
+    guestCount: request.guestCount,
+    requirements: request.requirements,
+    budget: request.budget,
+    createdAt: request.createdAt.toISOString(),
+    status: request.status as CateringRequest["status"],
+  };
+}
 
-// Seed demo data
-const demoDate = new Date();
-demoDate.setDate(demoDate.getDate() + 3);
+async function getUserOrderCount(
+  userId: string | null,
+): Promise<number> {
+  if (!userId) return 999;
 
-bulkOrders.push({
-  id: "BO-DEMO-001",
-  userId: null,
-  name: "Demo Customer",
-  email: "demo@example.com",
-  phone: "+1 (555) 000-0001",
-  items: [
-    { itemId: "1", name: "Sourdough Loaf", quantity: 4 },
-    { itemId: "2", name: "Cinnamon Roll", quantity: 6 },
-  ],
-  pickupDate: demoDate.toISOString().split("T")[0],
-  notes: "Please slice the bread",
-  createdAt: new Date(Date.now() - 86400000).toISOString(),
-  status: "confirmed",
-  discountApplied: false,
-  discountPercent: 0,
-  subtotal: 61,
-  total: 61,
-});
+  const orders = await db
+    .select()
+    .from(bulkOrdersTable)
+    .where(eq(bulkOrdersTable.userId, userId));
 
-// In-memory order-count per user (for first-time discount)
-function getUserOrderCount(userId: string | null): number {
-  if (!userId) return 999; // guests don't get discount
-
-  return bulkOrders.filter((order) => order.userId === userId).length;
+  return orders.length;
 }
 
 const BulkOrderSchema = z.object({
@@ -92,123 +129,199 @@ const BulkOrderSchema = z.object({
   subtotal: z.number().min(0).optional(),
 });
 
-router.post("/orders/bulk", (req: Request, res: Response) => {
-  const parsed = BulkOrderSchema.safeParse(req.body);
+// POST /api/orders/bulk
+router.post(
+  "/orders/bulk",
+  async (req: Request, res: Response) => {
+    try {
+      const parsed = BulkOrderSchema.safeParse(req.body);
 
-  if (!parsed.success) {
-    res.status(400).json({
-      error: "Invalid order data",
-      details: parsed.error.issues,
-    });
-    return;
-  }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid order data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
 
-  const userId = req.session?.userId ?? null;
-  const isFirstOrder = userId
-    ? getUserOrderCount(userId) === 0
-    : false;
+      const userId = req.session?.userId ?? null;
 
-  const catalogItems = parsed.data.items.map((item) => {
-    const catalogItem = menuItems.find(
-      (menuItem) => menuItem.id === item.itemId,
-    );
+      const isFirstOrder =
+        userId !== null &&
+        (await getUserOrderCount(userId)) === 0;
 
-    return {
-      requestItem: item,
-      catalogItem,
-    };
-  });
+      const catalogItems = await Promise.all(
+        parsed.data.items.map(async (item) => {
+          const results = await db
+            .select()
+            .from(menuItemsTable)
+            .where(eq(menuItemsTable.id, item.itemId));
 
-  const unavailableItem = catalogItems.find(
-    ({ catalogItem }) => !catalogItem || !catalogItem.available,
-  );
+          return {
+            requestItem: item,
+            catalogItem: results[0],
+          };
+        }),
+      );
 
-  if (unavailableItem) {
-    res.status(400).json({
-      error: "One or more selected items are unavailable.",
-    });
-    return;
-  }
+      const unavailableItem = catalogItems.find(
+        ({ catalogItem }) =>
+          !catalogItem || !catalogItem.available,
+      );
 
-  // Always calculate the subtotal from the server's menu prices.
-  // The optional client subtotal is kept for backwards compatibility.
-  const subtotal = catalogItems.reduce(
-    (sum, { requestItem, catalogItem }) =>
-      sum + catalogItem!.price * requestItem.quantity,
-    0,
-  );
+      if (unavailableItem) {
+        res.status(400).json({
+          error:
+            "One or more selected items are unavailable.",
+        });
+        return;
+      }
 
-  const discountPercent = isFirstOrder ? 50 : 0;
-  const total = isFirstOrder ? subtotal * 0.5 : subtotal;
+      const subtotal = catalogItems.reduce(
+        (sum, { requestItem, catalogItem }) =>
+          sum +
+          Number(catalogItem!.price) *
+            requestItem.quantity,
+        0,
+      );
 
-  const order: BulkOrder = {
-    id: `BO-${Date.now()}`,
-    userId,
-    ...parsed.data,
-    items: catalogItems.map(({ requestItem, catalogItem }) => ({
-      itemId: requestItem.itemId,
-      name: catalogItem!.name,
-      quantity: requestItem.quantity,
-    })),
-    subtotal,
-    discountPercent,
-    discountApplied: isFirstOrder,
-    total,
-    createdAt: new Date().toISOString(),
-    status: "pending",
-    notes: parsed.data.notes,
-    pickupDate: parsed.data.pickupDate,
-    name: parsed.data.name,
-    email: parsed.data.email,
-    phone: parsed.data.phone,
-  };
+      const discountPercent = isFirstOrder ? 50 : 0;
+      const total = isFirstOrder
+        ? subtotal * 0.5
+        : subtotal;
 
-  bulkOrders.push(order);
+      const orderId = `BO-${Date.now()}`;
 
-  const msg = isFirstOrder
-    ? `🎉 First-time order! Your 50% welcome discount has been applied. Total: $${total.toFixed(2)} (was $${subtotal.toFixed(2)}). We'll contact you within 24 hours to confirm!`
-    : "Your bulk order has been received! We'll contact you within 24 hours to confirm.";
+      const inserted = await db
+        .insert(bulkOrdersTable)
+        .values({
+          id: orderId,
+          userId,
+          name: parsed.data.name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          items: catalogItems.map(
+            ({ requestItem, catalogItem }) => ({
+              itemId: requestItem.itemId,
+              name: catalogItem!.name,
+              quantity: requestItem.quantity,
+            }),
+          ),
+          pickupDate: parsed.data.pickupDate,
+          notes: parsed.data.notes,
+          createdAt: new Date(),
+          status: "pending",
+          discountApplied: isFirstOrder,
+          discountPercent: String(discountPercent),
+          subtotal: String(subtotal),
+          total: String(total),
+        })
+        .returning();
 
-  res.status(201).json({
-    success: true,
-    orderId: order.id,
-    discountApplied: isFirstOrder,
-    discountPercent,
-    total,
-    message: msg,
-  });
-});
+      const order = inserted[0];
 
-router.get("/orders/bulk", (_req: Request, res: Response) => {
-  res.json({ orders: bulkOrders });
-});
+      if (!order) {
+        res.status(500).json({
+          error: "Failed to create order",
+        });
+        return;
+      }
 
-// GET /api/orders/my — orders for the logged-in user
-router.get("/orders/my", (req: Request, res: Response) => {
-  const userId = req.session?.userId;
+      const msg = isFirstOrder
+        ? `🎉 First-time order! Your 50% welcome discount has been applied. Total: $${total.toFixed(2)} (was $${subtotal.toFixed(2)}). We'll contact you within 24 hours to confirm!`
+        : "Your bulk order has been received! We'll contact you within 24 hours to confirm.";
 
-  if (!userId) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
+      res.status(201).json({
+        success: true,
+        orderId: order.id,
+        discountApplied: isFirstOrder,
+        discountPercent,
+        total,
+        message: msg,
+      });
+    } catch (error) {
+      console.error("Failed to create bulk order:", error);
 
-  const user = users.get(userId);
+      res.status(500).json({
+        error: "Failed to create order",
+      });
+    }
+  },
+);
 
-  if (!user) {
-    res.status(401).json({ error: "Not found" });
-    return;
-  }
+// GET /api/orders/bulk
+router.get(
+  "/orders/bulk",
+  async (_req: Request, res: Response) => {
+    try {
+      const orders = await db
+        .select()
+        .from(bulkOrdersTable);
 
-  const myBulk = bulkOrders.filter((order) => order.userId === userId);
-  const myCatering = cateringRequests.filter(
-    (order) => order.userId === userId,
-  );
+      res.json({
+        orders: orders.map(mapBulkOrder),
+      });
+    } catch (error) {
+      console.error("Failed to fetch bulk orders:", error);
 
-  res.json({
-    bulkOrders: myBulk,
-    cateringRequests: myCatering,
-  });
-});
+      res.status(500).json({
+        error: "Failed to fetch bulk orders",
+      });
+    }
+  },
+);
+
+// GET /api/orders/my
+router.get(
+  "/orders/my",
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.session?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          error: "Not authenticated",
+        });
+        return;
+      }
+
+      const existingUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
+
+      if (!existingUsers[0]) {
+        res.status(401).json({
+          error: "Not found",
+        });
+        return;
+      }
+
+      const myBulk = await db
+        .select()
+        .from(bulkOrdersTable)
+        .where(eq(bulkOrdersTable.userId, userId));
+
+      const myCatering = await db
+        .select()
+        .from(cateringRequestsTable)
+        .where(eq(cateringRequestsTable.userId, userId));
+
+      res.json({
+        bulkOrders: myBulk.map(mapBulkOrder),
+        cateringRequests: myCatering.map(
+          mapCateringRequest,
+        ),
+      });
+    } catch (error) {
+      console.error("Failed to fetch user orders:", error);
+
+      res.status(500).json({
+        error: "Failed to fetch user orders",
+      });
+    }
+  },
+);
 
 const CateringSchema = z.object({
   name: z.string().min(1),
@@ -221,35 +334,69 @@ const CateringSchema = z.object({
   budget: z.string().min(1),
 });
 
-router.post("/orders/catering", (req: Request, res: Response) => {
-  const parsed = CateringSchema.safeParse(req.body);
+// POST /api/orders/catering
+router.post(
+  "/orders/catering",
+  async (req: Request, res: Response) => {
+    try {
+      const parsed = CateringSchema.safeParse(req.body);
 
-  if (!parsed.success) {
-    res.status(400).json({
-      error: "Invalid catering data",
-      details: parsed.error.issues,
-    });
-    return;
-  }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid catering data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
 
-  const userId = req.session?.userId ?? null;
+      const userId = req.session?.userId ?? null;
 
-  const request: CateringRequest = {
-    id: `CAT-${Date.now()}`,
-    userId,
-    ...parsed.data,
-    createdAt: new Date().toISOString(),
-    status: "pending",
-  };
+      const requestId = `CAT-${Date.now()}`;
 
-  cateringRequests.push(request);
+      const inserted = await db
+        .insert(cateringRequestsTable)
+        .values({
+          id: requestId,
+          userId,
+          name: parsed.data.name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          eventType: parsed.data.eventType,
+          eventDate: parsed.data.eventDate,
+          guestCount: parsed.data.guestCount,
+          requirements: parsed.data.requirements,
+          budget: parsed.data.budget,
+          createdAt: new Date(),
+          status: "pending",
+        })
+        .returning();
 
-  res.status(201).json({
-    success: true,
-    requestId: request.id,
-    message:
-      "Your catering request has been received! Our events team will reach out within 48 hours.",
-  });
-});
+      const request = inserted[0];
+
+      if (!request) {
+        res.status(500).json({
+          error: "Failed to create catering request",
+        });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        requestId: request.id,
+        message:
+          "Your catering request has been received! Our events team will reach out within 48 hours.",
+      });
+    } catch (error) {
+      console.error(
+        "Failed to create catering request:",
+        error,
+      );
+
+      res.status(500).json({
+        error: "Failed to create catering request",
+      });
+    }
+  },
+);
 
 export default router;

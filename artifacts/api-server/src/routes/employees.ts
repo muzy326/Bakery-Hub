@@ -1,3 +1,4 @@
+
 import {
   Router,
   type Request,
@@ -5,18 +6,16 @@ import {
   type NextFunction,
 } from "express";
 import { z } from "zod";
+import { eq, and } from "drizzle-orm";
 
-import { users } from "../data/users.js";
+import { db } from "@workspace/db";
 import {
-  attendanceRecords,
-  employees,
-  paymentRecords,
-  salaryRecords,
-  type AttendanceRecord,
-  type Employee,
-  type PaymentRecord,
-  type SalaryRecord,
-} from "../data/employees.js";
+  users as usersTable,
+  employees as employeesTable,
+  attendanceRecords as attendanceTable,
+  salaryRecords as salaryTable,
+  paymentRecords as paymentTable,
+} from "@workspace/db";
 
 const router = Router();
 
@@ -55,11 +54,11 @@ function getParam(
     : null;
 }
 
-function requireAdmin(
+async function requireAdmin(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const userId = getUserId(req);
 
   if (!userId) {
@@ -69,16 +68,32 @@ function requireAdmin(
     return;
   }
 
-  const user = users.get(userId);
+  try {
+    const existingUsers = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
 
-  if (!user || user.role !== "admin") {
-    res.status(403).json({
-      error: "Forbidden",
+    const user = existingUsers[0];
+
+    if (!user || user.role !== "admin") {
+      res.status(403).json({
+        error: "Forbidden",
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    console.error(
+      "Admin authentication failed:",
+      error,
+    );
+
+    res.status(500).json({
+      error: "Authentication check failed",
     });
-    return;
   }
-
-  next();
 }
 
 const dateSchema = z
@@ -142,133 +157,274 @@ function roundMoney(value: number): number {
 router.get(
   "/admin/employees",
   requireAdmin,
-  (_req: Request, res: Response) => {
-    res.json({
-      employees: employees
-        .slice()
-        .reverse(),
-    });
+  async (_req: Request, res: Response) => {
+    try {
+      const allEmployees = await db
+        .select()
+        .from(employeesTable);
+
+      res.json({
+        employees: allEmployees.reverse(),
+      });
+    } catch (error) {
+      console.error(
+        "Failed to load employees:",
+        error,
+      );
+
+      res.status(500).json({
+        error: "Failed to load employees",
+      });
+    }
   },
 );
 
 router.post(
   "/admin/employees",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const parsed =
-      EmployeeSchema.safeParse(
-        req.body,
+  async (req: Request, res: Response) => {
+    try {
+      const parsed =
+        EmployeeSchema.safeParse(
+          req.body,
+        );
+
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid employee data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
+
+      const email =
+        parsed.data.email.toLowerCase();
+
+      const existingEmployees = await db
+        .select()
+        .from(employeesTable)
+        .where(
+          eq(
+            employeesTable.email,
+            email,
+          ),
+        );
+
+      if (existingEmployees.length > 0) {
+        res.status(409).json({
+          error:
+            "An employee with this email already exists.",
+        });
+        return;
+      }
+
+      const employeeId =
+        `employee-${Date.now()}`;
+
+      const inserted =
+        await db
+          .insert(employeesTable)
+          .values({
+            id: employeeId,
+            name: parsed.data.name,
+            email,
+            phone: parsed.data.phone,
+            role: parsed.data.role,
+            department:
+              parsed.data.department,
+            joinDate:
+              parsed.data.joinDate,
+            salary:
+              String(
+                roundMoney(
+                  parsed.data.salary,
+                ),
+              ),
+            status:
+              parsed.data.status,
+            createdAt:
+              new Date(),
+          })
+          .returning();
+
+      const employee = inserted[0];
+
+      if (!employee) {
+        res.status(500).json({
+          error: "Failed to create employee",
+        });
+        return;
+      }
+
+      res.status(201).json({
+        employee,
+      });
+    } catch (error) {
+      console.error(
+        "Failed to create employee:",
+        error,
       );
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid employee data",
-        details: parsed.error.issues,
+      res.status(500).json({
+        error: "Failed to create employee",
       });
-      return;
     }
-
-    const email =
-      parsed.data.email.toLowerCase();
-
-    if (
-      employees.some(
-        (employee) =>
-          employee.email.toLowerCase() ===
-          email,
-      )
-    ) {
-      res.status(409).json({
-        error:
-          "An employee with this email already exists.",
-      });
-      return;
-    }
-
-    const employee: Employee = {
-      id: `employee-${Date.now()}`,
-      ...parsed.data,
-      email,
-      createdAt:
-        new Date().toISOString(),
-    };
-
-    employees.push(employee);
-
-    res.status(201).json({
-      employee,
-    });
   },
 );
 
 router.patch(
   "/admin/employees/:id",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const employeeId = getParam(
-      req,
-      "id",
-    );
-
-    if (!employeeId) {
-      res.status(400).json({
-        error: "Invalid employee ID.",
-      });
-      return;
-    }
-
-    const employee = employees.find(
-      (item) => item.id === employeeId,
-    );
-
-    if (!employee) {
-      res.status(404).json({
-        error: "Employee not found.",
-      });
-      return;
-    }
-
-    const parsed =
-      EmployeeSchema.partial().safeParse(
-        req.body,
+  async (req: Request, res: Response) => {
+    try {
+      const employeeId = getParam(
+        req,
+        "id",
       );
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid employee data",
-        details: parsed.error.issues,
+      if (!employeeId) {
+        res.status(400).json({
+          error: "Invalid employee ID.",
+        });
+        return;
+      }
+
+      const parsed =
+        EmployeeSchema.partial().safeParse(
+          req.body,
+        );
+
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid employee data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
+
+      const email =
+        parsed.data.email
+          ?.toLowerCase();
+
+      if (email) {
+        const duplicate =
+          await db
+            .select()
+            .from(employeesTable)
+            .where(
+              eq(
+                employeesTable.email,
+                email,
+              ),
+            );
+
+        if (
+          duplicate.some(
+            (item) =>
+              item.id !== employeeId,
+          )
+        ) {
+          res.status(409).json({
+            error:
+              "An employee with this email already exists.",
+          });
+          return;
+        }
+      }
+
+      const values: Partial<
+        typeof employeesTable.$inferInsert
+      > = {};
+
+      if (parsed.data.name !== undefined) {
+        values.name =
+          parsed.data.name;
+      }
+
+      if (email !== undefined) {
+        values.email = email;
+      }
+
+      if (parsed.data.phone !== undefined) {
+        values.phone =
+          parsed.data.phone;
+      }
+
+      if (parsed.data.role !== undefined) {
+        values.role =
+          parsed.data.role;
+      }
+
+      if (
+        parsed.data.department !==
+        undefined
+      ) {
+        values.department =
+          parsed.data.department;
+      }
+
+      if (
+        parsed.data.joinDate !==
+        undefined
+      ) {
+        values.joinDate =
+          parsed.data.joinDate;
+      }
+
+      if (
+        parsed.data.salary !==
+        undefined
+      ) {
+        values.salary =
+          String(
+            roundMoney(
+              parsed.data.salary,
+            ),
+          );
+      }
+
+      if (
+        parsed.data.status !==
+        undefined
+      ) {
+        values.status =
+          parsed.data.status;
+      }
+
+      const updated =
+        await db
+          .update(employeesTable)
+          .set(values)
+          .where(
+            eq(
+              employeesTable.id,
+              employeeId,
+            ),
+          )
+          .returning();
+
+      const employee = updated[0];
+
+      if (!employee) {
+        res.status(404).json({
+          error: "Employee not found.",
+        });
+        return;
+      }
+
+      res.json({
+        employee,
       });
-      return;
-    }
+    } catch (error) {
+      console.error(
+        "Failed to update employee:",
+        error,
+      );
 
-    const email = parsed.data.email
-      ? parsed.data.email.toLowerCase()
-      : undefined;
-
-    if (
-      email &&
-      employees.some(
-        (item) =>
-          item.id !== employee.id &&
-          item.email.toLowerCase() === email,
-      )
-    ) {
-      res.status(409).json({
-        error:
-          "An employee with this email already exists.",
+      res.status(500).json({
+        error: "Failed to update employee",
       });
-      return;
     }
-
-    Object.assign(employee, parsed.data);
-
-    if (email) {
-      employee.email = email;
-    }
-
-    res.json({
-      employee,
-    });
   },
 );
 
@@ -279,106 +435,169 @@ router.patch(
 router.get(
   "/admin/attendance",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const date =
-      typeof req.query.date === "string"
-        ? req.query.date
-        : undefined;
+  async (req: Request, res: Response) => {
+    try {
+      const date =
+        typeof req.query.date ===
+        "string"
+          ? req.query.date
+          : undefined;
 
-    if (
-      date &&
-      !dateSchema.safeParse(date).success
-    ) {
-      res.status(400).json({
-        error:
-          "Invalid date. Use YYYY-MM-DD.",
+      if (
+        date &&
+        !dateSchema.safeParse(date)
+          .success
+      ) {
+        res.status(400).json({
+          error:
+            "Invalid date. Use YYYY-MM-DD.",
+        });
+        return;
+      }
+
+      const records = date
+        ? await db
+            .select()
+            .from(attendanceTable)
+            .where(
+              eq(
+                attendanceTable.date,
+                date,
+              ),
+            )
+        : await db
+            .select()
+            .from(attendanceTable);
+
+      res.json({
+        attendance:
+          records.reverse(),
       });
-      return;
+    } catch (error) {
+      console.error(
+        "Failed to load attendance:",
+        error,
+      );
+
+      res.status(500).json({
+        error: "Failed to load attendance",
+      });
     }
-
-    const records = date
-      ? attendanceRecords.filter(
-          (record) =>
-            record.date === date,
-        )
-      : attendanceRecords;
-
-    res.json({
-      attendance: records
-        .slice()
-        .reverse(),
-    });
   },
 );
 
 router.post(
   "/admin/attendance",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const parsed =
-      AttendanceSchema.safeParse(
-        req.body,
+  async (req: Request, res: Response) => {
+    try {
+      const parsed =
+        AttendanceSchema.safeParse(
+          req.body,
+        );
+
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid attendance data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
+
+      const employee =
+        await db
+          .select()
+          .from(employeesTable)
+          .where(
+            eq(
+              employeesTable.id,
+              parsed.data.employeeId,
+            ),
+          );
+
+      if (employee.length === 0) {
+        res.status(404).json({
+          error: "Employee not found.",
+        });
+        return;
+      }
+
+      const existing =
+        await db
+          .select()
+          .from(attendanceTable)
+          .where(
+            and(
+              eq(
+                attendanceTable.employeeId,
+                parsed.data.employeeId,
+              ),
+              eq(
+                attendanceTable.date,
+                parsed.data.date,
+              ),
+            ),
+          );
+
+      if (existing[0]) {
+        const updated =
+          await db
+            .update(attendanceTable)
+            .set({
+              status:
+                parsed.data.status,
+              note:
+                parsed.data.note,
+            })
+            .where(
+              eq(
+                attendanceTable.id,
+                existing[0].id,
+              ),
+            )
+            .returning();
+
+        res.json({
+          attendance:
+            updated[0],
+        });
+        return;
+      }
+
+      const inserted =
+        await db
+          .insert(attendanceTable)
+          .values({
+            id:
+              parsed.data.id ??
+              `attendance-${Date.now()}`,
+            employeeId:
+              parsed.data.employeeId,
+            date:
+              parsed.data.date,
+            status:
+              parsed.data.status,
+            note:
+              parsed.data.note,
+            createdAt:
+              new Date(),
+          })
+          .returning();
+
+      res.status(201).json({
+        attendance:
+          inserted[0],
+      });
+    } catch (error) {
+      console.error(
+        "Failed to save attendance:",
+        error,
       );
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid attendance data",
-        details: parsed.error.issues,
+      res.status(500).json({
+        error: "Failed to save attendance",
       });
-      return;
     }
-
-    const employeeExists =
-      employees.some(
-        (employee) =>
-          employee.id ===
-          parsed.data.employeeId,
-      );
-
-    if (!employeeExists) {
-      res.status(404).json({
-        error: "Employee not found.",
-      });
-      return;
-    }
-
-    const existing =
-      attendanceRecords.find(
-        (record) =>
-          record.employeeId ===
-            parsed.data.employeeId &&
-          record.date ===
-            parsed.data.date,
-      );
-
-    const record: AttendanceRecord =
-      existing ?? {
-        id: `attendance-${Date.now()}`,
-        employeeId:
-          parsed.data.employeeId,
-        date: parsed.data.date,
-        status: parsed.data.status,
-        note: parsed.data.note,
-        createdAt:
-          new Date().toISOString(),
-      };
-
-    record.status =
-      parsed.data.status;
-    record.note =
-      parsed.data.note;
-
-    if (!existing) {
-      attendanceRecords.push(record);
-    }
-
-    res
-      .status(
-        existing ? 200 : 201,
-      )
-      .json({
-        attendance: record,
-      });
   },
 );
 
@@ -389,101 +608,160 @@ router.post(
 router.get(
   "/admin/salaries",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const month =
-      typeof req.query.month === "string"
-        ? req.query.month
-        : currentMonth();
+  async (req: Request, res: Response) => {
+    try {
+      const month =
+        typeof req.query.month ===
+        "string"
+          ? req.query.month
+          : currentMonth();
 
-    if (
-      !monthSchema.safeParse(month)
-        .success
-    ) {
-      res.status(400).json({
-        error:
-          "Invalid month. Use YYYY-MM.",
+      if (
+        !monthSchema.safeParse(month)
+          .success
+      ) {
+        res.status(400).json({
+          error:
+            "Invalid month. Use YYYY-MM.",
+        });
+        return;
+      }
+
+      const salaries =
+        await db
+          .select()
+          .from(salaryTable)
+          .where(
+            eq(
+              salaryTable.month,
+              month,
+            ),
+          );
+
+      res.json({
+        salaries:
+          salaries.reverse(),
       });
-      return;
-    }
+    } catch (error) {
+      console.error(
+        "Failed to load salaries:",
+        error,
+      );
 
-    res.json({
-      salaries: salaryRecords
-        .filter(
-          (salary) =>
-            salary.month === month,
-        )
-        .slice()
-        .reverse(),
-    });
+      res.status(500).json({
+        error: "Failed to load salaries",
+      });
+    }
   },
 );
 
 router.post(
   "/admin/salaries",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const parsed =
-      monthSchema.safeParse(
-        req.body?.month,
-      );
+  async (req: Request, res: Response) => {
+    try {
+      const parsed =
+        monthSchema.safeParse(
+          req.body?.month,
+        );
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error:
-          "Invalid month. Use YYYY-MM.",
-      });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({
+          error:
+            "Invalid month. Use YYYY-MM.",
+        });
+        return;
+      }
 
-    const month = parsed.data;
-    const generated: SalaryRecord[] =
-      [];
+      const month = parsed.data;
 
-    employees
-      .filter(
-        (employee) =>
-          employee.status ===
-          "active",
-      )
-      .forEach((employee) => {
+      const activeEmployees =
+        await db
+          .select()
+          .from(employeesTable)
+          .where(
+            eq(
+              employeesTable.status,
+              "active",
+            ),
+          );
+
+      const existingSalaries =
+        await db
+          .select()
+          .from(salaryTable)
+          .where(
+            eq(
+              salaryTable.month,
+              month,
+            ),
+          );
+
+      const generated =
+        [];
+
+      for (
+        const employee of activeEmployees
+      ) {
         const existing =
-          salaryRecords.find(
+          existingSalaries.find(
             (salary) =>
               salary.employeeId ===
-                employee.id &&
-              salary.month === month,
+              employee.id,
           );
 
         if (existing) {
           generated.push(existing);
-          return;
+          continue;
         }
 
-        const salary: SalaryRecord = {
-          id: `salary-${Date.now()}-${employee.id}`,
-          employeeId: employee.id,
-          month,
-          baseSalary: roundMoney(
-            employee.salary,
-          ),
-          deductions: 0,
-          bonus: 0,
-          netSalary: roundMoney(
-            employee.salary,
-          ),
-          status: "pending",
-          paidAt: null,
-          createdAt:
-            new Date().toISOString(),
-        };
+        const baseSalary =
+          roundMoney(
+            Number(employee.salary),
+          );
 
-        salaryRecords.push(salary);
-        generated.push(salary);
+        const salary =
+          await db
+            .insert(salaryTable)
+            .values({
+              id:
+                `salary-${Date.now()}-${employee.id}`,
+              employeeId:
+                employee.id,
+              month,
+              baseSalary:
+                String(baseSalary),
+              deductions: "0",
+              bonus: "0",
+              netSalary:
+                String(baseSalary),
+              status: "pending",
+              paidAt: null,
+              createdAt:
+                new Date(),
+            })
+            .returning();
+
+        if (salary[0]) {
+          generated.push(
+            salary[0],
+          );
+        }
+      }
+
+      res.status(201).json({
+        salaries: generated,
       });
+    } catch (error) {
+      console.error(
+        "Failed to generate salaries:",
+        error,
+      );
 
-    res.status(201).json({
-      salaries: generated,
-    });
+      res.status(500).json({
+        error: "Failed to generate salaries",
+      });
+    }
   },
 );
 
@@ -494,120 +772,211 @@ router.post(
 router.get(
   "/admin/payments",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const month =
-      typeof req.query.month === "string"
-        ? req.query.month
-        : currentMonth();
+  async (req: Request, res: Response) => {
+    try {
+      const month =
+        typeof req.query.month ===
+        "string"
+          ? req.query.month
+          : currentMonth();
 
-    if (
-      !monthSchema.safeParse(month)
-        .success
-    ) {
-      res.status(400).json({
-        error:
-          "Invalid month. Use YYYY-MM.",
-      });
-      return;
-    }
+      if (
+        !monthSchema.safeParse(month)
+          .success
+      ) {
+        res.status(400).json({
+          error:
+            "Invalid month. Use YYYY-MM.",
+        });
+        return;
+      }
 
-    const salaryIds = new Set(
-      salaryRecords
-        .filter(
-          (salary) =>
-            salary.month === month,
-        )
-        .map(
+      const salaries =
+        await db
+          .select()
+          .from(salaryTable)
+          .where(
+            eq(
+              salaryTable.month,
+              month,
+            ),
+          );
+
+      const salaryIds =
+        salaries.map(
           (salary) => salary.id,
-        ),
-    );
+        );
 
-    res.json({
-      payments: paymentRecords
-        .filter((payment) =>
-          salaryIds.has(
-            payment.salaryId,
-          ),
-        )
-        .slice()
-        .reverse(),
-    });
+      const payments =
+        salaryIds.length > 0
+          ? await db
+              .select()
+              .from(paymentTable)
+          : [];
+
+      const filteredPayments =
+        payments.filter(
+          (payment) =>
+            salaryIds.includes(
+              payment.salaryId,
+            ),
+        );
+
+      res.json({
+        payments:
+          filteredPayments.reverse(),
+      });
+    } catch (error) {
+      console.error(
+        "Failed to load payments:",
+        error,
+      );
+
+      res.status(500).json({
+        error: "Failed to load payments",
+      });
+    }
   },
 );
 
 router.post(
   "/admin/payments",
   requireAdmin,
-  (req: Request, res: Response) => {
-    const parsed =
-      PaymentSchema.safeParse(
-        req.body,
-      );
+  async (req: Request, res: Response) => {
+    try {
+      const parsed =
+        PaymentSchema.safeParse(
+          req.body,
+        );
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid payment data",
-        details: parsed.error.issues,
-      });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid payment data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
 
-    const salary =
-      salaryRecords.find(
-        (record) =>
-          record.id ===
-            parsed.data.salaryId &&
-          record.employeeId ===
-            parsed.data.employeeId,
-      );
+      const salary =
+        await db
+          .select()
+          .from(salaryTable)
+          .where(
+            and(
+              eq(
+                salaryTable.id,
+                parsed.data.salaryId,
+              ),
+              eq(
+                salaryTable.employeeId,
+                parsed.data.employeeId,
+              ),
+            ),
+          );
 
-    if (!salary) {
-      res.status(404).json({
-        error:
-          "Salary record not found.",
-      });
-      return;
-    }
+      const salaryRecord =
+        salary[0];
 
-    if (
-      salary.status === "paid" ||
-      paymentRecords.some(
-        (payment) =>
-          payment.salaryId === salary.id,
-      )
-    ) {
-      res.status(409).json({
-        error:
-          "This salary has already been paid.",
-      });
-      return;
-    }
+      if (!salaryRecord) {
+        res.status(404).json({
+          error:
+            "Salary record not found.",
+        });
+        return;
+      }
 
-    const payment: PaymentRecord = {
-      id: `payment-${Date.now()}`,
-      employeeId:
-        salary.employeeId,
-      salaryId: salary.id,
-      amount: roundMoney(
-        salary.netSalary,
-      ),
-      method:
-        parsed.data.method,
-      paidAt:
+      if (
+        salaryRecord.status ===
+        "paid"
+      ) {
+        res.status(409).json({
+          error:
+            "This salary has already been paid.",
+        });
+        return;
+      }
+
+      const existingPayment =
+        await db
+          .select()
+          .from(paymentTable)
+          .where(
+            eq(
+              paymentTable.salaryId,
+              salaryRecord.id,
+            ),
+          );
+
+      if (existingPayment.length > 0) {
+        res.status(409).json({
+          error:
+            "This salary has already been paid.",
+        });
+        return;
+      }
+
+      const paidAt =
         parsed.data.paidAt ??
-        new Date().toISOString(),
-      note: parsed.data.note,
-    };
+        new Date().toISOString();
 
-    paymentRecords.push(payment);
+      const payment =
+        await db
+          .insert(paymentTable)
+          .values({
+            id:
+              `payment-${Date.now()}`,
+            employeeId:
+              salaryRecord.employeeId,
+            salaryId:
+              salaryRecord.id,
+            amount:
+              String(
+                roundMoney(
+                  Number(
+                    salaryRecord.netSalary,
+                  ),
+                ),
+              ),
+            method:
+              parsed.data.method,
+            paidAt:
+              new Date(paidAt),
+            note:
+              parsed.data.note,
+          })
+          .returning();
 
-    salary.status = "paid";
-    salary.paidAt = payment.paidAt;
+      const updatedSalary =
+        await db
+          .update(salaryTable)
+          .set({
+            status: "paid",
+            paidAt:
+              new Date(paidAt),
+          })
+          .where(
+            eq(
+              salaryTable.id,
+              salaryRecord.id,
+            ),
+          )
+          .returning();
 
-    res.status(201).json({
-      payment,
-      salary,
-    });
+      res.status(201).json({
+        payment: payment[0],
+        salary:
+          updatedSalary[0],
+      });
+    } catch (error) {
+      console.error(
+        "Failed to create payment:",
+        error,
+      );
+
+      res.status(500).json({
+        error: "Failed to create payment",
+      });
+    }
   },
 );
 

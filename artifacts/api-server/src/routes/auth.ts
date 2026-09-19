@@ -1,12 +1,11 @@
+
 import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 
-import {
-  users,
-  toSafeUser,
-  type User,
-} from "../data/users.js";
+import { db } from "@workspace/db";
+import { users as usersTable } from "@workspace/db";
 
 declare module "express-session" {
   interface SessionData {
@@ -27,61 +26,89 @@ const LoginSchema = z.object({
   password: z.string().min(1),
 });
 
+function toSafeUser(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+  };
+}
+
 // POST /api/auth/register
 router.post(
   "/auth/register",
   async (req: Request, res: Response) => {
-    const parsed = RegisterSchema.safeParse(
-      req.body,
-    );
+    try {
+      const parsed = RegisterSchema.safeParse(req.body);
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid data",
-        details: parsed.error.issues,
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid data",
+          details: parsed.error.issues,
+        });
+        return;
+      }
+
+      const {
+        name,
+        email,
+        password,
+      } = parsed.data;
+
+      const normalizedEmail = email.toLowerCase();
+
+      // Check if user already exists in Neon
+      const existingUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, normalizedEmail));
+
+      if (existingUsers.length > 0) {
+        res.status(409).json({
+          error: "Email already registered",
+        });
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const userId = `user-${Date.now()}`;
+
+      const insertedUsers = await db
+        .insert(usersTable)
+        .values({
+          id: userId,
+          name,
+          email: normalizedEmail,
+          passwordHash,
+          role: "customer",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      const user = insertedUsers[0];
+
+      if (!user) {
+        res.status(500).json({
+          error: "Failed to create user",
+        });
+        return;
+      }
+
+      req.session.userId = user.id;
+
+      res.status(201).json({
+        user: toSafeUser(user),
       });
-      return;
-    }
+    } catch (error) {
+      console.error("Registration error:", error);
 
-    const {
-      name,
-      email,
-      password,
-    } = parsed.data;
-
-    // Check duplicate
-    const exists = [...users.values()].find(
-      (u) =>
-        u.email.toLowerCase() ===
-        email.toLowerCase(),
-    );
-
-    if (exists) {
-      res.status(409).json({
-        error: "Email already registered",
+      res.status(500).json({
+        error: "Failed to register user",
       });
-      return;
     }
-
-    const passwordHash =
-      await bcrypt.hash(password, 10);
-
-    const user: User = {
-      id: `user-${Date.now()}`,
-      name,
-      email: email.toLowerCase(),
-      passwordHash,
-      role: "customer",
-      createdAt: new Date().toISOString(),
-    };
-
-    users.set(user.id, user);
-
-    req.session.userId = user.id;
-
-    res.status(201).json({
-      user: toSafeUser(user),
-    });
   },
 );
 
@@ -89,53 +116,62 @@ router.post(
 router.post(
   "/auth/login",
   async (req: Request, res: Response) => {
-    const parsed = LoginSchema.safeParse(
-      req.body,
-    );
+    try {
+      const parsed = LoginSchema.safeParse(req.body);
 
-    if (!parsed.success) {
-      res.status(400).json({
-        error: "Invalid credentials",
-      });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid credentials",
+        });
+        return;
+      }
 
-    const {
-      email,
-      password,
-    } = parsed.data;
+      const {
+        email,
+        password,
+      } = parsed.data;
 
-    const user = [...users.values()].find(
-      (u) =>
-        u.email.toLowerCase() ===
-        email.toLowerCase(),
-    );
+      const normalizedEmail = email.toLowerCase();
 
-    if (!user) {
-      res.status(401).json({
-        error: "Invalid email or password",
-      });
-      return;
-    }
+      // Find user in Neon
+      const foundUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, normalizedEmail));
 
-    const valid =
-      await bcrypt.compare(
+      const user = foundUsers[0];
+
+      if (!user) {
+        res.status(401).json({
+          error: "Invalid email or password",
+        });
+        return;
+      }
+
+      const valid = await bcrypt.compare(
         password,
         user.passwordHash,
       );
 
-    if (!valid) {
-      res.status(401).json({
-        error: "Invalid email or password",
+      if (!valid) {
+        res.status(401).json({
+          error: "Invalid email or password",
+        });
+        return;
+      }
+
+      req.session.userId = user.id;
+
+      res.json({
+        user: toSafeUser(user),
       });
-      return;
+    } catch (error) {
+      console.error("Login error:", error);
+
+      res.status(500).json({
+        error: "Failed to login",
+      });
     }
-
-    req.session.userId = user.id;
-
-    res.json({
-      user: toSafeUser(user),
-    });
   },
 );
 
@@ -143,7 +179,16 @@ router.post(
 router.post(
   "/auth/logout",
   (req: Request, res: Response) => {
-    req.session.destroy(() => {
+    req.session.destroy((error) => {
+      if (error) {
+        console.error("Logout error:", error);
+
+        res.status(500).json({
+          error: "Failed to logout",
+        });
+        return;
+      }
+
       res.json({
         success: true,
       });
@@ -154,29 +199,42 @@ router.post(
 // GET /api/auth/me
 router.get(
   "/auth/me",
-  (req: Request, res: Response) => {
-    const userId =
-      req.session.userId;
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
 
-    if (!userId) {
-      res.status(401).json({
-        error: "Not authenticated",
+      if (!userId) {
+        res.status(401).json({
+          error: "Not authenticated",
+        });
+        return;
+      }
+
+      // Find user in Neon
+      const foundUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId));
+
+      const user = foundUsers[0];
+
+      if (!user) {
+        res.status(401).json({
+          error: "User not found",
+        });
+        return;
+      }
+
+      res.json({
+        user: toSafeUser(user),
       });
-      return;
-    }
+    } catch (error) {
+      console.error("Auth me error:", error);
 
-    const user = users.get(userId);
-
-    if (!user) {
-      res.status(401).json({
-        error: "User not found",
+      res.status(500).json({
+        error: "Failed to get user",
       });
-      return;
     }
-
-    res.json({
-      user: toSafeUser(user),
-    });
   },
 );
 
