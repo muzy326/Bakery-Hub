@@ -1,4 +1,4 @@
-import { db, menuItems } from "@workspace/db";
+import { db, menuItems } from "../lib/db/src/index.ts";
 
 const items = [
   {
