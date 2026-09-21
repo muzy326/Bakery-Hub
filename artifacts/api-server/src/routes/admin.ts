@@ -9,8 +9,9 @@ import { z
 } from "zod";
 import { eq } from "drizzle-orm";
 
-import { db } from "@workspace/db";
+
 import {
+  db,
   users as usersTable,
   bulkOrders as bulkOrdersTable,
   cateringRequests as cateringRequestsTable,
