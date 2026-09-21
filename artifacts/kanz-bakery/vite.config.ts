@@ -45,16 +45,33 @@ export default defineConfig({
     emptyOutDir: true,
   },
 
-  server: {
-    port: 5173,
-    strictPort: true,
-    host: '0.0.0.0',
-    allowedHosts: true,
+  // server: {
+  //   port: 5173,
+  //   strictPort: true,
+  //   host: '0.0.0.0',
+  //   allowedHosts: true,
 
-    fs: {
-      strict: true,
+  //   fs: {
+  //     strict: true,
+  //   },
+  // },
+  server: {
+  port: 5173,
+  strictPort: true,
+  host: '0.0.0.0',
+  allowedHosts: true,
+
+  proxy: {
+    '/api': {
+      target: 'http://localhost:3000',
+      changeOrigin: true,
     },
   },
+
+  fs: {
+    strict: true,
+  },
+},
 
   preview: {
     port: 4173,

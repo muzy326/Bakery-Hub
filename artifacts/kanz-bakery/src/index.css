@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -25,13 +26,15 @@
 
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Ovenly bekery — warm amber, oat and ink palette */
+/* Ovenly bakery — warm amber, oat and ink palette */
+
 :root {
   --background: 38 43% 95%;
   --foreground: 18 29% 17%;
@@ -50,8 +53,10 @@
   --accent-foreground: 42 60% 99%;
   --destructive: 1 61% 47%;
   --destructive-foreground: 42 60% 99%;
+
   --app-font-sans: 'DM Sans', sans-serif;
   --app-font-serif: 'Playfair Display', Georgia, serif;
+
   --radius: 0.75rem;
 }
 
@@ -116,6 +121,9 @@
   }
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font: inherit;
 }

@@ -13,6 +13,11 @@ export interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  updateProfile: (
+    name: string,
+    email: string,
+    password?: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -81,10 +86,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("kanz_session");
     setUser(null);
   };
+const updateProfile = async (
+  name: string,
+  email: string,
+  password?: string,
+) => {
+  const res = await fetch("/api/auth/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      name,
+      email,
+      ...(password ? { password } : {}),
+    }),
+  });
 
+  const data = await res.json() as {
+    user?: AuthUser;
+    error?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(data.error ?? "Failed to update profile");
+  }
+
+  setUser(data.user!);
+};
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider
+  value={{
+    user,
+    loading,
+    login,
+    register,
+    updateProfile,
+    logout,
+    refresh,
+  }}
+>
+    {children}
+</AuthContext.Provider>
   );
 }

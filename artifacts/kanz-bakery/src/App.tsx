@@ -12,6 +12,7 @@ import BulkOrder from './pages/BulkOrder';
 import Catering from './pages/Catering';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 import MyOrders from './pages/MyOrders';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminOrders from './pages/admin/AdminOrders';
@@ -110,6 +111,7 @@ function AppShell() {
           <Route path="/login"       component={Login}     />
           <Route path="/register"    component={Register}  />
           <Route path="/my-orders"   component={MyOrders}  />
+          <Route path="/profile"     component={Profile} />
           <Route component={NotFound} />
         </Switch>
       </main>

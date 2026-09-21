@@ -108,6 +108,13 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
                           <Link href="/my-orders" onClick={() => setAccountOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FFF8F0] transition-colors">
                             <Package size={14} className="text-[#D4A017]" /> My Orders
                           </Link>
+                          <Link
+  href="/profile"
+  onClick={() => setAccountOpen(false)}
+  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FFF8F0] transition-colors"
+>
+  <User size={14} className="text-[#D4A017]" /> Edit Profile
+</Link>
                           {user.role === "admin" && (
                             <Link href="/admin/orders" onClick={() => setAccountOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#2C1810] hover:bg-[#FFF8F0] transition-colors">
                               <ShieldCheck size={14} className="text-purple-500" /> Admin Panel
@@ -171,6 +178,10 @@ export default function Navbar({ cartCount, onCartOpen }: NavbarProps) {
                 <Link href="/my-orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm text-[#F5E6C8]/80 hover:text-[#F5E6C8] hover:bg-white/10 transition-colors">
                   <Package size={15} className="text-[#D4A017]" /> My Orders
                 </Link>
+                <Link href="/profile"onClick={() => setMobileOpen(false)}
+  className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm text-[#F5E6C8]/80 hover:text-[#F5E6C8] hover:bg-white/10 transition-colors">
+  <User size={15} className="text-[#D4A017]" /> Edit Profile
+</Link>
                 {user.role === "admin" && (
                   <Link href="/admin/orders" onClick={() => setMobileOpen(false)} className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm text-[#F5E6C8]/80 hover:text-[#F5E6C8] hover:bg-white/10 transition-colors">
                     <ShieldCheck size={15} className="text-purple-400" /> Admin Panel
